@@ -1,0 +1,1 @@
+export { default as WarrantyPolicy } from './WarrantyPolicy'

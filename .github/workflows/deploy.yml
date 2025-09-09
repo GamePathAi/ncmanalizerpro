@@ -1,0 +1,120 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linter
+      run: npm run lint
+    
+    - name: Build application
+      run: npm run build:prod
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+        VITE_STRIPE_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_ANNUAL_PRICE_ID }}
+        VITE_STRIPE_LIFETIME_PRICE_ID: ${{ secrets.VITE_STRIPE_LIFETIME_PRICE_ID }}
+        VITE_APP_URL: https://ncmanalizerpro.com.br
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    
+    - name: Add server to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+    
+    - name: Deploy to server
+      run: |
+        # Create deployment package
+        tar -czf deploy.tar.gz -C dist .
+        
+        # Upload files
+        scp deploy.tar.gz ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/
+        scp nginx.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/
+        
+        # Deploy on server
+        ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          # Backup current deployment
+          if [ -d "/var/www/ncmanalizerpro" ]; then
+            sudo cp -r /var/www/ncmanalizerpro /var/www/ncmanalizerpro.backup.$(date +%Y%m%d_%H%M%S)
+          fi
+          
+          # Create directory
+          sudo mkdir -p /var/www/ncmanalizerpro
+          
+          # Extract new files
+          cd /var/www/ncmanalizerpro
+          sudo tar -xzf /tmp/deploy.tar.gz
+          
+          # Set permissions
+          sudo chown -R www-data:www-data /var/www/ncmanalizerpro
+          sudo chmod -R 755 /var/www/ncmanalizerpro
+          
+          # Update Nginx configuration
+          sudo cp /tmp/nginx.conf /etc/nginx/sites-available/ncmanalizerpro
+          sudo ln -sf /etc/nginx/sites-available/ncmanalizerpro /etc/nginx/sites-enabled/
+          
+          # Test and reload Nginx
+          sudo nginx -t && sudo systemctl reload nginx
+          
+          # Clean up
+          rm /tmp/deploy.tar.gz /tmp/nginx.conf
+          
+          echo "✅ Deployment completed successfully"
+        EOF
+    
+    - name: Health check
+      run: |
+        sleep 10
+        curl -f https://ncmanalizerpro.com.br || exit 1
+        echo "✅ Health check passed"
+    
+    - name: Notify deployment
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "🎉 Deployment successful to https://ncmanalizerpro.com.br"
+        else
+          echo "❌ Deployment failed"
+        fi
