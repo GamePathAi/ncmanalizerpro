@@ -70,7 +70,7 @@ async function verifyDomain() {
           console.log('\n🔧 Próximo passo:');
           console.log('Configure o SMTP no Supabase com:');
           console.log('- Sender email: noreply@ncmanalyzerpro.com.br');
-    console.log('- Ou qualquer email @ncmanalyzerpro.com.br');
+         console.log('- Ou qualquer email @ncmanalyzerpro.com.br');
           
         } else {
           console.log('⏳ Domínio ainda não verificado.');

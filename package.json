@@ -19,6 +19,7 @@
   "dependencies": {
     "@stripe/stripe-js": "^7.9.0",
     "@supabase/supabase-js": "^2.57.2",
+    "@tailwindcss/postcss": "^4.1.13",
     "@types/qrcode": "^1.5.5",
     "jspdf": "^3.0.2",
     "lucide-react": "^0.542.0",
