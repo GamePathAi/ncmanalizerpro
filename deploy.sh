@@ -83,3 +83,5 @@ if curl -f -s https://$DOMAIN > /dev/null; then
 else
     echo "⚠️  Health check failed - please verify deployment"
 fi
+
+
