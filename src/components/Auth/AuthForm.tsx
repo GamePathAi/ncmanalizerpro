@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
+import TOTPVerify from '../TOTPVerify'
 
 interface AuthFormProps {
   mode: 'login' | 'register'
@@ -19,6 +20,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showTOTP, setShowTOTP] = useState(false)
+  const [totpCredentials, setTotpCredentials] = useState({ email: '', password: '' })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,14 +50,22 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
         // Limpar formulário após sucesso
         setFormData({ email: '', password: '', confirmPassword: '' })
       } else {
-        const { error } = await signIn(formData.email, formData.password)
+        const { error, user } = await signIn(formData.email, formData.password)
         
         if (error) {
+          // Verificar se é erro de TOTP requerido
+          if (error.message === 'TOTP_REQUIRED' && error.requiresTOTP) {
+            setTotpCredentials({ email: formData.email, password: formData.password })
+            setShowTOTP(true)
+            return
+          }
           throw new Error(error.message)
         }
 
-        setSuccess('Login realizado com sucesso!')
-        onSuccess?.()
+        if (user) {
+          setSuccess('Login realizado com sucesso!')
+          onSuccess?.()
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro inesperado')
@@ -68,6 +79,34 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
       ...formData,
       [e.target.name]: e.target.value
     })
+  }
+
+  const handleTOTPSuccess = () => {
+    setSuccess('Login realizado com sucesso!')
+    setShowTOTP(false)
+    onSuccess?.()
+  }
+
+  const handleTOTPCancel = () => {
+    setShowTOTP(false)
+    setTotpCredentials({ email: '', password: '' })
+  }
+
+  const handleTOTPError = (error: string) => {
+    setError(error)
+  }
+
+  // Se estiver mostrando TOTP, renderizar o componente TOTP
+  if (showTOTP) {
+    return (
+      <TOTPVerify
+        email={totpCredentials.email}
+        password={totpCredentials.password}
+        onSuccess={handleTOTPSuccess}
+        onCancel={handleTOTPCancel}
+        onError={handleTOTPError}
+      />
+    )
   }
 
   return (

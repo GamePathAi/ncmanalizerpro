@@ -6,8 +6,8 @@
 set -e
 
 ENVIRONMENT=${1:-production}
-APP_NAME="ncmanalizerpro"
-DOMAIN="ncmanalizerpro.com.br"
+APP_NAME="ncmanalyzerpro"
+DOMAIN="ncmanalyzerpro.com.br"
 REMOTE_USER="ubuntu"
 REMOTE_HOST="your-ec2-instance-ip"
 REMOTE_PATH="/var/www/$APP_NAME"
@@ -38,24 +38,24 @@ scp nginx.conf $REMOTE_USER@$REMOTE_HOST:/tmp/
 echo "🔧 Deploying on server..."
 ssh $REMOTE_USER@$REMOTE_HOST << 'EOF'
     # Backup current deployment
-    if [ -d "/var/www/ncmanalizerpro" ]; then
-        sudo cp -r /var/www/ncmanalizerpro /var/www/ncmanalizerpro.backup.$(date +%Y%m%d_%H%M%S)
+    if [ -d "/var/www/ncmanalyzerpro" ]; then
+    sudo cp -r /var/www/ncmanalyzerpro /var/www/ncmanalyzerpro.backup.$(date +%Y%m%d_%H%M%S)
     fi
     
     # Create directory if it doesn't exist
-    sudo mkdir -p /var/www/ncmanalizerpro
+    sudo mkdir -p /var/www/ncmanalyzerpro
     
     # Extract new files
-    cd /var/www/ncmanalizerpro
+    cd /var/www/ncmanalyzerpro
     sudo tar -xzf /tmp/deploy.tar.gz
     
     # Set permissions
-    sudo chown -R www-data:www-data /var/www/ncmanalizerpro
-    sudo chmod -R 755 /var/www/ncmanalizerpro
+    sudo chown -R www-data:www-data /var/www/ncmanalyzerpro
+sudo chmod -R 755 /var/www/ncmanalyzerpro
     
     # Update Nginx configuration
-    sudo cp /tmp/nginx.conf /etc/nginx/sites-available/ncmanalizerpro
-    sudo ln -sf /etc/nginx/sites-available/ncmanalizerpro /etc/nginx/sites-enabled/
+    sudo cp /tmp/nginx.conf /etc/nginx/sites-available/ncmanalyzerpro
+sudo ln -sf /etc/nginx/sites-available/ncmanalyzerpro /etc/nginx/sites-enabled/
     
     # Test Nginx configuration
     sudo nginx -t

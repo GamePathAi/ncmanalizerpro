@@ -3,8 +3,35 @@ import type { User } from '@supabase/supabase-js'
 import type { UserProfile, Subscription } from '../types'
 
 // Configuração do Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+  'https://placeholder.supabase.co'
+
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  'placeholder-anon-key'
+
+// Aviso útil se as variáveis não estiverem configuradas corretamente
+if (
+  !import.meta.env.VITE_SUPABASE_URL &&
+  !import.meta.env.NEXT_PUBLIC_SUPABASE_URL
+) {
+  // eslint-disable-next-line no-console
+  console.error(
+    '[Supabase] Variáveis de ambiente ausentes: defina VITE_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL no .env.'
+  )
+}
+if (
+  !import.meta.env.VITE_SUPABASE_ANON_KEY &&
+  !import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+) {
+  // eslint-disable-next-line no-console
+  console.error(
+    '[Supabase] Variáveis de ambiente ausentes: defina VITE_SUPABASE_ANON_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY no .env.'
+  )
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -29,10 +56,7 @@ export const signUp = async (email: string, password: string): Promise<{ user: U
 }
 
 export const signIn = async (email: string, password: string): Promise<{ user: User | null; error: any }> => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   return { user: data.user, error }
 }
 

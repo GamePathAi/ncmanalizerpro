@@ -11,6 +11,10 @@ export interface UserProfile {
   subscription_end_date?: string
   created_at?: string
   updated_at?: string
+  // Campos TOTP
+  totp_secret?: string
+  totp_enabled?: boolean
+  totp_backup_codes?: string[]
 }
 
 export interface Subscription {

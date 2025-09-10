@@ -1,35 +1,24 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { CheckCircle, XCircle, Loader } from 'lucide-react'
 
 const AuthCallback: React.FC = () => {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Processar callback de confirmação de email
-        const { data, error } = await supabase.auth.getSession()
+        // Processar tokens do hash da URL (formato do Supabase)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
         
-        if (error) {
-          console.error('Erro no callback:', error)
-          setStatus('error')
-          setMessage('Erro ao processar confirmação de email.')
-          return
-        }
+        console.log('Tokens encontrados:', { accessToken: !!accessToken, refreshToken: !!refreshToken })
 
-        // Verificar se há parâmetros de confirmação na URL
-        const accessToken = searchParams.get('access_token')
-        const refreshToken = searchParams.get('refresh_token')
-        const type = searchParams.get('type')
-
-        if (accessToken && refreshToken && type === 'signup') {
+        if (accessToken && refreshToken) {
           // Definir a sessão com os tokens recebidos
-          const { error: sessionError } = await supabase.auth.setSession({
+          const { data, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           })
@@ -37,24 +26,42 @@ const AuthCallback: React.FC = () => {
           if (sessionError) {
             console.error('Erro ao definir sessão:', sessionError)
             setStatus('error')
-            setMessage('Erro ao confirmar email.')
+            setMessage('Erro ao processar confirmação de email.')
             return
           }
 
-          setStatus('success')
-          setMessage('Email confirmado com sucesso! Redirecionando para o dashboard...')
-          
-          // Redirecionar para dashboard após 2 segundos
-          setTimeout(() => {
-            navigate('/dashboard')
-          }, 2000)
+          if (data.user) {
+            setStatus('success')
+            setMessage('Email confirmado com sucesso! Redirecionando para o dashboard...')
+            
+            // Usar o sistema de navegação customizado da aplicação
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('navigate', { 
+                detail: { page: 'dashboard' } 
+              }))
+            }, 2000)
+          } else {
+            setStatus('error')
+            setMessage('Erro ao processar autenticação.')
+          }
         } else {
-          // Se não há parâmetros de confirmação, verificar se já está logado
+          // Verificar se já existe uma sessão ativa
+          const { data, error } = await supabase.auth.getSession()
+          
+          if (error) {
+            console.error('Erro ao verificar sessão:', error)
+            setStatus('error')
+            setMessage('Erro ao verificar autenticação.')
+            return
+          }
+
           if (data.session?.user) {
             setStatus('success')
             setMessage('Você já está logado! Redirecionando...')
             setTimeout(() => {
-              navigate('/dashboard')
+              window.dispatchEvent(new CustomEvent('navigate', { 
+                detail: { page: 'dashboard' } 
+              }))
             }, 1000)
           } else {
             setStatus('error')
@@ -69,7 +76,7 @@ const AuthCallback: React.FC = () => {
     }
 
     handleAuthCallback()
-  }, [navigate, searchParams])
+  }, [])
 
   const getStatusIcon = () => {
     switch (status) {
@@ -91,6 +98,12 @@ const AuthCallback: React.FC = () => {
       default:
         return 'text-blue-600'
     }
+  }
+
+  const handleNavigateToLogin = () => {
+    window.dispatchEvent(new CustomEvent('navigate', { 
+      detail: { page: 'landing' } 
+    }))
   }
 
   return (
@@ -124,17 +137,10 @@ const AuthCallback: React.FC = () => {
         {status === 'error' && (
           <div className="space-y-4">
             <button
-              onClick={() => navigate('/login')}
+              onClick={handleNavigateToLogin}
               className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              Ir para Login
-            </button>
-            
-            <button
-              onClick={() => navigate('/register')}
-              className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
-            >
-              Fazer Novo Cadastro
+              Voltar ao Início
             </button>
           </div>
         )}

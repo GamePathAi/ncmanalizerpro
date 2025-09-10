@@ -33,7 +33,7 @@ jobs:
         VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
         VITE_STRIPE_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_ANNUAL_PRICE_ID }}
         VITE_STRIPE_LIFETIME_PRICE_ID: ${{ secrets.VITE_STRIPE_LIFETIME_PRICE_ID }}
-        VITE_APP_URL: https://ncmanalizerpro.com.br
+        VITE_APP_URL: https://ncmanalyzerpro.com.br
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -76,24 +76,24 @@ jobs:
         # Deploy on server
         ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           # Backup current deployment
-          if [ -d "/var/www/ncmanalizerpro" ]; then
-            sudo cp -r /var/www/ncmanalizerpro /var/www/ncmanalizerpro.backup.$(date +%Y%m%d_%H%M%S)
+          if [ -d "/var/www/ncmanalyzerpro" ]; then
+            sudo cp -r /var/www/ncmanalyzerpro /var/www/ncmanalyzerpro.backup.$(date +%Y%m%d_%H%M%S)
           fi
           
           # Create directory
-          sudo mkdir -p /var/www/ncmanalizerpro
+          sudo mkdir -p /var/www/ncmanalyzerpro
           
           # Extract new files
-          cd /var/www/ncmanalizerpro
+          cd /var/www/ncmanalyzerpro
           sudo tar -xzf /tmp/deploy.tar.gz
           
           # Set permissions
-          sudo chown -R www-data:www-data /var/www/ncmanalizerpro
-          sudo chmod -R 755 /var/www/ncmanalizerpro
+          sudo chown -R www-data:www-data /var/www/ncmanalyzerpro
+          sudo chmod -R 755 /var/www/ncmanalyzerpro
           
           # Update Nginx configuration
-          sudo cp /tmp/nginx.conf /etc/nginx/sites-available/ncmanalizerpro
-          sudo ln -sf /etc/nginx/sites-available/ncmanalizerpro /etc/nginx/sites-enabled/
+          sudo cp /tmp/nginx.conf /etc/nginx/sites-available/ncmanalyzerpro
+          sudo ln -sf /etc/nginx/sites-available/ncmanalyzerpro /etc/nginx/sites-enabled/
           
           # Test and reload Nginx
           sudo nginx -t && sudo systemctl reload nginx
@@ -107,14 +107,14 @@ jobs:
     - name: Health check
       run: |
         sleep 10
-        curl -f https://ncmanalizerpro.com.br || exit 1
+        curl -f https://ncmanalyzerpro.com.br || exit 1
         echo "✅ Health check passed"
     
     - name: Notify deployment
       if: always()
       run: |
         if [ "${{ job.status }}" == "success" ]; then
-          echo "🎉 Deployment successful to https://ncmanalizerpro.com.br"
+          echo "🎉 Deployment successful to https://ncmanalyzerpro.com.br"
         else
           echo "❌ Deployment failed"
         fi
