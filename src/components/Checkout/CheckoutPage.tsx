@@ -38,6 +38,14 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
       setSelectedPlan(storedPlan);
     }
   }, []);
+
+  // Definir produto baseado no plano selecionado
+  const product = {
+    priceId: selectedPlan === 'annual' ? PRICING_PLANS[0].stripePriceIdYearly : PRICING_PLANS[0].stripePriceIdMonthly,
+    amount: selectedPlan === 'annual' ? PRICING_PLANS[0].yearlyPrice * 100 : PRICING_PLANS[0].monthlyPrice * 100,
+    name: `${PRICING_PLANS[0].name} - ${selectedPlan === 'annual' ? 'Anual' : 'Mensal'}`,
+    description: selectedPlan === 'annual' ? 'Cobrança anual com desconto' : 'Cobrança mensal'
+  };
   const [formData, setFormData] = useState<FormData>({
     name: (user as any)?.displayName || '',
     email: user?.email || '',
@@ -55,15 +63,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
     }
   });
 
-  const product = selectedPlan === 'monthly' ? {
-      priceId: PRICING_PLANS[1].stripePriceIdMonthly,
-      amount: PRICING_PLANS[1].monthlyPrice * 100,
-      name: `${PRICING_PLANS[1].name} - Mensal`
-    } : {
-      priceId: PRICING_PLANS[1].stripePriceIdYearly,
-      amount: PRICING_PLANS[1].yearlyPrice * 100,
-      name: `${PRICING_PLANS[1].name} - Anual`
-    };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

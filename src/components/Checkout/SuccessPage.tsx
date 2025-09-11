@@ -19,7 +19,7 @@ interface PaymentData {
 }
 
 const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
-  const { } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [error, setError] = useState('');
@@ -79,12 +79,31 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
     alert('Email de boas-vindas enviado com sucesso!');
   };
 
+  const handleAccessDashboard = async () => {
+    try {
+      // Forçar atualização do perfil do usuário para garantir que o status da assinatura seja atualizado
+      if (user) {
+        await refreshUserProfile();
+        console.log('Perfil do usuário atualizado com sucesso');
+      }
+      
+      // Aguardar um momento para garantir que a atualização foi processada
+      setTimeout(() => {
+        onContinue();
+      }, 500);
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      // Mesmo com erro, redirecionar para o dashboard
+      onContinue();
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Verificando pagamento...</p>
+          <p className="text-gray-800 text-lg">Verificando pagamento...</p>
         </div>
       </div>
     );
@@ -92,11 +111,11 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
         <div className="max-w-md mx-auto text-center">
-          <div className="bg-red-900/50 border border-red-500/50 rounded-lg p-6">
-            <h2 className="text-xl font-bold text-red-300 mb-2">Erro na Verificação</h2>
-            <p className="text-red-200 mb-4">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-red-800 mb-2">Erro na Verificação</h2>
+            <p className="text-red-700 mb-4">{error}</p>
             <button
               onClick={onContinue}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
@@ -110,57 +129,57 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-900 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header de Sucesso */}
         <div className="text-center mb-12">
           <div className="bg-green-500 p-4 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
             <CheckCircle className="text-white" size={40} />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">Pagamento Realizado com Sucesso! 🎉</h1>
-          <p className="text-xl text-gray-300">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Pagamento Realizado com Sucesso! 🎉</h1>
+          <p className="text-xl text-gray-700">
             Bem-vindo ao NCM Analyzer Pro! Sua assinatura está ativa.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Detalhes do Pagamento */}
-          <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-gray-700 rounded-xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-              <CreditCard className="text-green-400" size={24} />
+          <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-lg">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <CreditCard className="text-green-600" size={24} />
               Detalhes do Pagamento
             </h2>
             
             {paymentData && (
               <div className="space-y-4">
-                <div className="flex justify-between items-center py-3 border-b border-gray-600">
-                  <span className="text-gray-300">Plano:</span>
-                  <span className="text-white font-semibold">
+                <div className="flex justify-between items-center py-3 border-b border-gray-200">
+                  <span className="text-gray-600">Plano:</span>
+                  <span className="text-gray-900 font-semibold">
                     {paymentData.planType === 'monthly' ? 'NCM Pro - Mensal' : 'NCM Pro - Anual'}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center py-3 border-b border-gray-600">
-                  <span className="text-gray-300">Valor Pago:</span>
-                  <span className="text-green-400 font-bold text-xl">
+                <div className="flex justify-between items-center py-3 border-b border-gray-200">
+                  <span className="text-gray-600">Valor Pago:</span>
+                  <span className="text-green-600 font-bold text-xl">
                     {formatPrice(paymentData.amount, paymentData.currency)}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center py-3 border-b border-gray-600">
-                  <span className="text-gray-300">Email:</span>
-                  <span className="text-white">{paymentData.customerEmail}</span>
+                <div className="flex justify-between items-center py-3 border-b border-gray-200">
+                  <span className="text-gray-600">Email:</span>
+                  <span className="text-gray-900">{paymentData.customerEmail}</span>
                 </div>
                 
-                <div className="flex justify-between items-center py-3 border-b border-gray-600">
-                  <span className="text-gray-300">Data:</span>
-                  <span className="text-white">{new Date().toLocaleDateString('pt-BR')}</span>
+                <div className="flex justify-between items-center py-3 border-b border-gray-200">
+                  <span className="text-gray-600">Data:</span>
+                  <span className="text-gray-900">{new Date().toLocaleDateString('pt-BR')}</span>
                 </div>
                 
                 {paymentData.subscriptionId && (
                   <div className="flex justify-between items-center py-3">
-                    <span className="text-gray-300">ID da Assinatura:</span>
-                    <span className="text-white font-mono text-sm">{paymentData.subscriptionId}</span>
+                    <span className="text-gray-600">ID da Assinatura:</span>
+                    <span className="text-gray-900 font-mono text-sm">{paymentData.subscriptionId}</span>
                   </div>
                 )}
               </div>
@@ -189,9 +208,9 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
           </div>
 
           {/* Próximos Passos */}
-          <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-gray-700 rounded-xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-              <Calendar className="text-blue-400" size={24} />
+          <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-lg">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <Calendar className="text-blue-600" size={24} />
               Próximos Passos
             </h2>
             
@@ -201,8 +220,8 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
                   1
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold mb-2">Acesse o Dashboard</h3>
-                  <p className="text-gray-300 text-sm">
+                  <h3 className="text-gray-900 font-semibold mb-2">Acesse o Dashboard</h3>
+                  <p className="text-gray-600 text-sm">
                     Explore todas as funcionalidades do NCM Analyzer Pro no seu dashboard personalizado.
                   </p>
                 </div>
@@ -213,8 +232,8 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
                   2
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold mb-2">Comece a Analisar</h3>
-                  <p className="text-gray-300 text-sm">
+                  <h3 className="text-gray-900 font-semibold mb-2">Comece a Analisar</h3>
+                  <p className="text-gray-600 text-sm">
                     Faça upload dos seus arquivos de importação e comece a economizar nos impostos.
                   </p>
                 </div>
@@ -225,13 +244,13 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
                   3
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold mb-2">Suporte Técnico</h3>
-                  <p className="text-gray-300 text-sm">
+                  <h3 className="text-gray-900 font-semibold mb-2">Suporte Técnico</h3>
+                  <p className="text-gray-600 text-sm">
                     Precisa de ajuda? Nossa equipe está disponível para te auxiliar.
                   </p>
                   <a 
                     href="mailto:ncmanalizerpro@gmail.com" 
-                    className="text-blue-400 hover:text-blue-300 text-sm underline"
+                    className="text-blue-600 hover:text-blue-700 text-sm underline"
                   >
                     ncmanalizerpro@gmail.com
                   </a>
@@ -242,7 +261,7 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
             {/* Botão Principal */}
             <div className="mt-8">
               <button
-                onClick={onContinue}
+                onClick={handleAccessDashboard}
                 className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg"
               >
                 Acessar Dashboard
@@ -254,27 +273,27 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
 
         {/* Informações Adicionais */}
         {customerData && (
-          <div className="mt-8 bg-gradient-to-br from-slate-800 to-gray-800 border border-gray-700 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Dados do Cliente</h3>
+          <div className="mt-8 bg-white border border-gray-200 rounded-xl p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Dados do Cliente</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-400">Nome:</span>
-                <span className="text-white ml-2">{customerData.name}</span>
+                <span className="text-gray-600">Nome:</span>
+                <span className="text-gray-900 ml-2">{customerData.name}</span>
               </div>
               <div>
-                <span className="text-gray-400">Email:</span>
-                <span className="text-white ml-2">{customerData.email}</span>
+                <span className="text-gray-600">Email:</span>
+                <span className="text-gray-900 ml-2">{customerData.email}</span>
               </div>
               {customerData.company && (
                 <div>
-                  <span className="text-gray-400">Empresa:</span>
-                  <span className="text-white ml-2">{customerData.company}</span>
+                  <span className="text-gray-600">Empresa:</span>
+                  <span className="text-gray-900 ml-2">{customerData.company}</span>
                 </div>
               )}
               {customerData.phone && (
                 <div>
-                  <span className="text-gray-400">Telefone:</span>
-                  <span className="text-white ml-2">{customerData.phone}</span>
+                  <span className="text-gray-600">Telefone:</span>
+                  <span className="text-gray-900 ml-2">{customerData.phone}</span>
                 </div>
               )}
             </div>
@@ -283,9 +302,9 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
 
         {/* Garantia */}
         <div className="mt-8 text-center">
-          <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-6 max-w-2xl mx-auto">
-            <h3 className="text-green-400 font-semibold mb-2">🛡️ Garantia de 30 Dias</h3>
-            <p className="text-green-200 text-sm">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 max-w-2xl mx-auto">
+            <h3 className="text-green-800 font-semibold mb-2">🛡️ Garantia de 30 Dias</h3>
+            <p className="text-green-700 text-sm">
               Não ficou satisfeito? Oferecemos garantia total de 30 dias. 
               Entre em contato conosco para solicitar o reembolso.
             </p>

@@ -22,13 +22,12 @@ function AppContent() {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
-    const success = urlParams.get('success');
     const canceled = urlParams.get('canceled');
     
-    if (sessionId && success === 'true') {
+    // Se há session_id, significa que veio do Stripe com sucesso
+    if (sessionId) {
       setCurrentPage('success');
-      // Limpar parâmetros da URL após redirecionamento
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Não limpar a URL ainda, pois a SuccessPage precisa do session_id
     } else if (canceled === 'true') {
       setCurrentPage('cancel');
       // Limpar parâmetros da URL após redirecionamento

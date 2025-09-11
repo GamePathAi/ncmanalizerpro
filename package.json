@@ -17,6 +17,7 @@
     "analyze": "npm run build:prod && npx vite-bundle-analyzer dist/stats.html"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@stripe/stripe-js": "^7.9.0",
     "@supabase/supabase-js": "^2.57.4",
     "@tailwindcss/postcss": "^4.1.13",

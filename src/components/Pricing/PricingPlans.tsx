@@ -13,14 +13,16 @@ const PricingPlans: React.FC<PricingPlansProps> = ({ onNavigateToCheckout }) => 
   const [error, setError] = useState('')
 
   const handlePlanSelect = async (planType: 'monthly' | 'annual') => {
-    // Permitir checkout para usuários autenticados (pending_subscription) ou não autenticados
-    if (!user) {
-      setError('Você precisa estar logado para assinar um plano')
+    // Permitir checkout para usuários autenticados (pending_subscription)
+    // Remover verificação que impede usuários logados de prosseguir
+    if (isSubscribed) {
+      setError('Você já possui uma assinatura ativa')
       return
     }
 
-    if (isSubscribed) {
-      setError('Você já possui uma assinatura ativa')
+    // Se não há usuário, mostrar erro mais específico
+    if (!user) {
+      setError('Você precisa fazer login primeiro para assinar um plano')
       return
     }
 

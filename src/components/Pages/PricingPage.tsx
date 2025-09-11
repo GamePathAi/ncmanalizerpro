@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../UI/LoadingSpinner';
 import { CheckIcon, StarIcon } from '@heroicons/react/24/solid';
-import { CrownIcon } from '@heroicons/react/24/outline';
 import { stripePromise, PRICING_PLANS } from '../../lib/stripe';
 import { supabase } from '../../lib/supabase';
 
@@ -77,7 +76,7 @@ export const PricingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
-              <CrownIcon className="w-8 h-8 text-blue-600" />
+              <StarIcon className="w-8 h-8 text-blue-600" />
               <h1 className="text-xl font-bold text-gray-900">NCM Pro</h1>
             </div>
             <div className="flex items-center gap-4">

@@ -1,9 +1,6 @@
-/* Adicionar !important para garantir que estilos críticos sejam aplicados */
+/* Remover estilos que interferem com páginas full-screen */
 #root {
-  max-width: 1280px !important;
-  margin: 0 auto !important;
-  padding: 2rem !important;
-  text-align: center !important;
+  /* Permitir que componentes controlem seu próprio layout */
 }
 
 /* Garantir que gradientes funcionem */

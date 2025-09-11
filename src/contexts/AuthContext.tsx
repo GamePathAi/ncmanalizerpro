@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { supabase, getCurrentUser, signUp as supabaseSignUp, signIn as supabaseSignIn } from '../lib/supabase'
 import type { UserProfile } from '../types'
 import { totpService } from '../lib/totp'
-import { useUserState, type UserSubscriptionStatus, type UserState as UserStateType } from '../hooks/useUserState'
+import { useUserState, type UserState as UserStateType } from '../hooks/useUserState'
 import type { User } from '@supabase/supabase-js'
 
 // Estados possíveis do usuário

@@ -76,11 +76,11 @@ export function useUserState(user: User | null): UseUserStateReturn {
         // Atualizar status baseado no auth.users se necessário
         let updatedProfile = profile;
         
-        if (!profile.email_verified_at && user.email_confirmed_at) {
+        // Verificar se precisa atualizar status de subscription baseado na confirmação de email
+        if (user.email_confirmed_at && profile.subscription_status === 'pending_email') {
           const { data: updated, error: updateError } = await supabase
             .from('user_profiles')
             .update({
-              email_verified_at: user.email_confirmed_at,
               subscription_status: 'pending_subscription'
             })
             .eq('id', user.id)
