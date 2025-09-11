@@ -23,13 +23,13 @@ export interface StripeProduct {
   prices: StripePrice[]
 }
 
-// Preços dos planos (IDs do Stripe)
+// Preços dos planos (IDs do Stripe) - ATUALIZADOS COM PRICES RECORRENTES
 export const STRIPE_PRICES = {
-  BASIC_MONTHLY: import.meta.env.VITE_STRIPE_ANNUAL_PRICE_ID || 'price_1S67e80qhrqQ3Ot3vnlkAFTK',
+  BASIC_MONTHLY: import.meta.env.VITE_STRIPE_BASIC_MONTHLY_PRICE_ID || 'price_1S6Cqx0qhrqQ3Ot3vizSWOnH',
   BASIC_YEARLY: import.meta.env.VITE_STRIPE_BASIC_YEARLY_PRICE_ID || 'price_1S67e80qhrqQ3Ot3vnlkAFTK',
-  PRO_MONTHLY: import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || 'price_1S67dR0qhrqQ3Ot3cKb0CxVc',
+  PRO_MONTHLY: import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || 'price_1S6Cqy0qhrqQ3Ot3Nt5nwkKR',
   PRO_YEARLY: import.meta.env.VITE_STRIPE_PRO_YEARLY_PRICE_ID || 'price_1S67e80qhrqQ3Ot3vnlkAFTK',
-  ENTERPRISE_MONTHLY: import.meta.env.VITE_STRIPE_ENTERPRISE_MONTHLY_PRICE_ID || 'price_enterprise_monthly',
+  ENTERPRISE_MONTHLY: import.meta.env.VITE_STRIPE_ENTERPRISE_MONTHLY_PRICE_ID || 'price_1S6Cqz0qhrqQ3Ot3oV3Y21wP',
   ENTERPRISE_YEARLY: import.meta.env.VITE_STRIPE_ENTERPRISE_YEARLY_PRICE_ID || 'price_enterprise_yearly'
 }
 
