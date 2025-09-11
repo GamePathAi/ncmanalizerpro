@@ -12,6 +12,7 @@ interface AuthFormProps {
 const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) => {
   const { signIn, signUp } = useAuth()
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -39,16 +40,26 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
           throw new Error('A senha deve ter pelo menos 6 caracteres')
         }
 
-        const { error } = await signUp(formData.email, formData.password)
+        const { error, user } = await signUp(formData.email, formData.password, formData.name)
         
         if (error) {
           throw new Error(error.message)
         }
 
-        setSuccess('Conta criada com sucesso! Enviamos um email de confirmação para ' + formData.email + '. Verifique sua caixa de entrada e clique no link para ativar sua conta.')
+        if (user) {
+          setSuccess('Conta criada com sucesso! Escolha seu plano para começar a economizar nas suas importações.')
+          
+          // Aguardar um momento para mostrar a mensagem
+          setTimeout(() => {
+            // Redirecionar para página de preços para escolher plano
+            window.dispatchEvent(new CustomEvent('navigate', { 
+              detail: { page: 'pricing' } 
+            }))
+          }, 2000)
+        }
         
         // Limpar formulário após sucesso
-        setFormData({ email: '', password: '', confirmPassword: '' })
+        setFormData({ name: '', email: '', password: '', confirmPassword: '' })
       } else {
         const { error, user } = await signIn(formData.email, formData.password)
         
@@ -59,6 +70,20 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
             setShowTOTP(true)
             return
           }
+          
+          // Verificar se é erro de assinatura requerida
+          if (error.message === 'SUBSCRIPTION_REQUIRED' && error.requiresPayment) {
+            setError(error.details || 'Assinatura requerida para acessar o sistema.')
+            
+            // Redirecionar para página de pagamento após 2 segundos
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('navigate', { 
+                detail: { page: 'pricing' } 
+              }))
+            }, 2000)
+            return
+          }
+          
           throw new Error(error.message)
         }
 
@@ -110,15 +135,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-orange-500/20 rounded-xl shadow-xl p-8 w-full max-w-md">
-      <div className="text-center mb-6">
-        <div className="bg-orange-500 p-3 rounded-lg inline-block mb-4">
-          <User className="text-white" size={24} />
+    <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 backdrop-blur-xl border-2 border-orange-500/70 hover:border-orange-400/90 rounded-2xl shadow-2xl hover:shadow-orange-500/40 p-8 w-full max-w-md transition-all duration-300">
+      <div className="text-center mb-8">
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-2xl inline-block mb-6 shadow-lg shadow-orange-500/40 hover:shadow-orange-500/60 transition-all duration-300">
+          <User className="text-white" size={32} />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">
+        <h2 className="text-3xl font-bold text-black mb-3">
           {mode === 'login' ? '🔐 Entrar' : '🚗 Criar Conta'}
         </h2>
-        <p className="text-gray-400">
+        <p className="text-black/80 text-lg font-medium">
           {mode === 'login' 
             ? 'Acesse sua conta NCM Analyzer Pro' 
             : 'Junte-se ao NCM Analyzer Pro'}
@@ -140,63 +165,83 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {mode === 'register' && (
+          <div>
+          <label className="block text-black text-base font-bold mb-3">
+            Nome Completo
+          </label>
+          <div className="relative">
+            <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-orange-400" size={20} />
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+              className="w-full bg-slate-700 border-2 border-orange-500/60 hover:border-orange-400/80 text-white rounded-xl pl-12 pr-4 py-4 focus:border-orange-400 focus:ring-4 focus:ring-orange-500/40 focus:outline-none transition-all duration-200 text-base font-medium"
+              placeholder="Seu nome completo"
+            />
+          </div>
+        </div>
+        )}
+
         <div>
-          <label className="block text-white text-sm font-medium mb-2">
+          <label className="block text-black text-base font-bold mb-3">
             Email
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-orange-400" size={20} />
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleInputChange}
               required
-              className="w-full bg-slate-700 border border-gray-600 text-white rounded-lg pl-10 pr-4 py-3 focus:border-orange-500 focus:ring-orange-500/20 focus:outline-none transition-colors"
+              className="w-full bg-slate-700 border-2 border-orange-500/60 hover:border-orange-400/80 text-white rounded-xl pl-12 pr-4 py-4 focus:border-orange-400 focus:ring-4 focus:ring-orange-500/40 focus:outline-none transition-all duration-200 text-base font-medium"
               placeholder="seu@email.com"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-white text-sm font-medium mb-2">
+          <label className="block text-black text-base font-bold mb-3">
             Senha
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-orange-400" size={20} />
             <input
               type={showPassword ? 'text' : 'password'}
               name="password"
               value={formData.password}
               onChange={handleInputChange}
               required
-              className="w-full bg-slate-700 border border-gray-600 text-white rounded-lg pl-10 pr-12 py-3 focus:border-orange-500 focus:ring-orange-500/20 focus:outline-none transition-colors"
+              className="w-full bg-slate-700 border-2 border-orange-500/60 hover:border-orange-400/80 text-white rounded-xl pl-12 pr-14 py-4 focus:border-orange-400 focus:ring-4 focus:ring-orange-500/40 focus:outline-none transition-all duration-200 text-base font-medium"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-orange-400 hover:text-orange-300 transition-colors"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
 
         {mode === 'register' && (
           <div>
-            <label className="block text-white text-sm font-medium mb-2">
+            <label className="block text-black text-base font-bold mb-3">
               Confirmar Senha
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-orange-400" size={20} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
-                className="w-full bg-slate-700 border border-gray-600 text-white rounded-lg pl-10 pr-4 py-3 focus:border-orange-500 focus:ring-orange-500/20 focus:outline-none transition-colors"
+                className="w-full bg-slate-700 border-2 border-orange-500/60 hover:border-orange-400/80 text-white rounded-xl pl-12 pr-4 py-4 focus:border-orange-400 focus:ring-4 focus:ring-orange-500/40 focus:outline-none transition-all duration-200 text-base font-medium"
                 placeholder="••••••••"
               />
             </div>
@@ -206,7 +251,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-orange-500/40 transition-all duration-300 flex items-center justify-center gap-2 text-lg transform hover:scale-[1.02] active:scale-[0.98]"
         >
           {loading ? (
             <>
@@ -221,13 +266,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
         </button>
       </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-gray-400">
+      <div className="mt-8 text-center">
+        <p className="text-black/70 text-base font-medium">
           {mode === 'login' ? 'Não tem uma conta?' : 'Já tem uma conta?'}
         </p>
         <button
           onClick={onToggleMode}
-          className="text-orange-400 hover:text-orange-300 font-medium transition-colors mt-1"
+          className="text-orange-600 hover:text-orange-500 font-bold transition-colors mt-2 text-lg hover:underline"
         >
           {mode === 'login' ? 'Criar conta gratuita' : 'Fazer login'}
         </button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { cancelSubscription, formatPrice, STRIPE_PRODUCTS } from '../../lib/stripe'
+import { cancelSubscription, formatPrice, PRICING_PLANS } from '../../lib/stripe'
 import { User, CreditCard, Calendar, AlertTriangle, LogOut, Settings, BarChart3, Wrench, Users, FileText, TrendingUp, Zap, Shield } from 'lucide-react'
 import { WarrantyPolicy } from '../Legal'
 
@@ -44,8 +44,15 @@ const UserDashboard: React.FC = () => {
   const getSubscriptionPrice = () => {
     if (!(user as any)?.subscription_price_id) return 'N/A'
     
-    const product = Object.values(STRIPE_PRODUCTS).find((p: any) => p.priceId === (user as any).subscription_price_id)
-    return product ? formatPrice(product.amount) : 'N/A'
+    const product = PRICING_PLANS.find((p: any) => 
+      p.stripePriceIdMonthly === (user as any).subscription_price_id || 
+      p.stripePriceIdYearly === (user as any).subscription_price_id
+    )
+     if (!product) return 'N/A'
+     
+     const isYearly = product.stripePriceIdYearly === (user as any).subscription_price_id
+     const amount = isYearly ? product.yearlyPrice * 100 : product.monthlyPrice * 100
+     return formatPrice(amount)
   }
 
   const formatDate = (dateString: string | null | undefined) => {

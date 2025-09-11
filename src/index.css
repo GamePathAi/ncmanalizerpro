@@ -1,3 +1,42 @@
 @import "tailwindcss";
 
 @config "../tailwind.config.js";
+
+/* Estilos customizados para garantir contraste na página de checkout */
+.checkout-page {
+  background: linear-gradient(135deg, #0f172a 0%, #111827 100%) !important;
+  min-height: 100vh;
+}
+
+.checkout-form-card {
+  background: linear-gradient(135deg, #1e293b 0%, #374151 100%) !important;
+  border: 1px solid #4b5563 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+}
+
+.checkout-input {
+  background-color: #334155 !important;
+  border: 1px solid #64748b !important;
+  color: #ffffff !important;
+}
+
+.checkout-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.checkout-input:focus {
+  ring-color: #3b82f6 !important;
+  border-color: transparent !important;
+}
+
+.checkout-label {
+  color: #d1d5db !important;
+}
+
+.checkout-title {
+  color: #ffffff !important;
+}
+
+.checkout-subtitle {
+  color: #9ca3af !important;
+}

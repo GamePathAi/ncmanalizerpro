@@ -5,6 +5,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+        - VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
+        - VITE_APP_NAME=${VITE_APP_NAME}
+        - VITE_APP_URL=${VITE_APP_URL}
+        - VITE_STRIPE_ANNUAL_PRICE_ID=${VITE_STRIPE_ANNUAL_PRICE_ID}
+        - VITE_STRIPE_LIFETIME_PRICE_ID=${VITE_STRIPE_LIFETIME_PRICE_ID}
     container_name: ncm-analyzer-pro
     restart: unless-stopped
     ports:

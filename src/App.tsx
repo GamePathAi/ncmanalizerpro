@@ -16,7 +16,37 @@ import { useAuth } from './contexts/AuthContext'
 // Componente interno que usa o contexto de autenticação
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('landing');
-  const { user, isSubscribed } = useAuth();
+  const { isSubscribed, userState } = useAuth();
+
+  // Detectar parâmetros da URL para redirecionamento pós-pagamento
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const success = urlParams.get('success');
+    const canceled = urlParams.get('canceled');
+    
+    if (sessionId && success === 'true') {
+      setCurrentPage('success');
+      // Limpar parâmetros da URL após redirecionamento
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (canceled === 'true') {
+      setCurrentPage('cancel');
+      // Limpar parâmetros da URL após redirecionamento
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  // Redirecionar usuários pending_subscription para pricing automaticamente
+  // Exceto quando estão nas páginas de checkout, sucesso ou cancelamento
+  React.useEffect(() => {
+    if (userState === 'pending_subscription' && 
+        currentPage !== 'pricing' && 
+        currentPage !== 'checkout' && 
+        currentPage !== 'success' && 
+        currentPage !== 'cancel') {
+      setCurrentPage('pricing');
+    }
+  }, [userState, currentPage]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -90,14 +120,14 @@ function AppContent() {
       {/* Navegação flutuante */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
         {/* Botão principal baseado no estado do usuário */}
-        {!user ? (
+        {userState === 'pending_email' || userState === 'pending_subscription' ? (
           <button
             onClick={() => setCurrentPage('pricing')}
             className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-4 py-2 rounded-full shadow-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
           >
             👑 Assinar Agora
           </button>
-        ) : (
+        ) : userState === 'active' ? (
           <div className="flex flex-col gap-2">
             {isSubscribed && (
               <button
@@ -114,6 +144,13 @@ function AppContent() {
               👤 Conta
             </button>
           </div>
+        ) : (
+          <button
+            onClick={() => setCurrentPage('landing')}
+            className="bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-700 hover:to-slate-700 text-white px-4 py-2 rounded-full shadow-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+          >
+            🔑 Entrar
+          </button>
         )}
         
         {/* Botão para voltar ao site */}

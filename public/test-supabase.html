@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Teste de Configuração Supabase</h1>
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message) {
+            results.innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        // Configurações do Supabase (hardcoded para teste)
+        const supabaseUrl = 'https://fsntzljufghutoyqxokm.supabase.co';
+        const supabaseKey = 'sb_publishable_anCt58SD2bi_7IMlgk5ZKg_bJ-T7RJQ';
+        
+        log('=== TESTE DE CONFIGURAÇÃO SUPABASE ===');
+        log('URL: ' + supabaseUrl);
+        log('Key: ' + (supabaseKey ? 'Definida' : 'Não definida'));
+        
+        const { createClient } = supabase;
+        const client = createClient(supabaseUrl, supabaseKey);
+        
+        async function testConnection() {
+            try {
+                log('\n=== TESTE DE CONEXÃO ===');
+                const { data, error } = await client.from('profiles').select('count', { count: 'exact', head: true });
+                if (error) {
+                    log('❌ Erro na conexão: ' + error.message);
+                } else {
+                    log('✅ Conexão com Supabase funcionando!');
+                }
+            } catch (err) {
+                log('❌ Erro ao conectar: ' + err.message);
+            }
+            
+            try {
+                log('\n=== TESTE DE SIGNUP ===');
+                const testEmail = `test-${Date.now()}@example.com`;
+                const { data, error } = await client.auth.signUp({
+                    email: testEmail,
+                    password: 'test123456'
+                });
+                
+                if (error) {
+                    log('❌ Erro no signup: ' + error.message);
+                } else {
+                    log('✅ Signup funcionando: ' + (data.user ? 'Usuário criado' : 'Resposta recebida'));
+                }
+            } catch (err) {
+                log('❌ Erro no teste de signup: ' + err.message);
+            }
+        }
+        
+        testConnection();
+    </script>
+</body>
+</html>

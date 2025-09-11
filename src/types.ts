@@ -3,7 +3,7 @@ export interface UserProfile {
   id: string
   email?: string
   full_name?: string
-  subscription_type?: 'annual' | 'lifetime' | null
+  subscription_type?: 'monthly' | 'annual' | null
   subscription_status?: 'active' | 'canceled' | 'pending'
   subscription_id?: string
   customer_id?: string
@@ -23,7 +23,7 @@ export interface Subscription {
   stripe_subscription_id: string
   stripe_customer_id: string
   status: 'active' | 'canceled' | 'past_due' | 'unpaid'
-  plan_type: 'annual' | 'lifetime'
+  plan_type: 'monthly' | 'annual'
   current_period_start: string
   current_period_end: string
   created_at: string

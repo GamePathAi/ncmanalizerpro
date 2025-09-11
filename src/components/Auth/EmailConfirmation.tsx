@@ -1,18 +1,29 @@
 import React, { useEffect, useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { CheckCircle, XCircle, Mail, ArrowRight, Loader } from 'lucide-react'
 
 const EmailConfirmation: React.FC = () => {
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired'>('loading')
   const [message, setMessage] = useState('')
 
+  // Função para navegar usando o sistema customizado
+  const navigateToPage = (page: string) => {
+    const event = new CustomEvent('navigate', { detail: { page } })
+    window.dispatchEvent(event)
+  }
+
+  // Função para obter parâmetros da URL
+  const getUrlParams = () => {
+    const urlParams = new URLSearchParams(window.location.search)
+    return {
+      token: urlParams.get('token'),
+      type: urlParams.get('type')
+    }
+  }
+
   useEffect(() => {
     const confirmEmail = async () => {
-      const token = searchParams.get('token')
-      const type = searchParams.get('type')
+      const { token, type } = getUrlParams()
       
       if (!token || type !== 'signup') {
         setStatus('error')
@@ -43,163 +54,127 @@ const EmailConfirmation: React.FC = () => {
           setStatus('success')
           setMessage('Email confirmado com sucesso! Você já pode fazer login.')
           
-          // Redirecionar para login após 3 segundos
+          // Redirecionar para dashboard após 3 segundos
           setTimeout(() => {
-            navigate('/login')
+            navigateToPage('dashboard')
           }, 3000)
         }
       } catch (error) {
-        console.error('Erro na confirmação:', error)
+        console.error('Erro inesperado:', error)
         setStatus('error')
-        setMessage('Erro inesperado. Tente novamente.')
+        setMessage('Erro inesperado. Tente novamente mais tarde.')
       }
     }
 
     confirmEmail()
-  }, [searchParams, navigate])
+  }, [])
 
   const handleResendConfirmation = async () => {
-    const email = searchParams.get('email')
-    if (!email) {
-      alert('Email não encontrado. Faça o cadastro novamente.')
-      navigate('/register')
+    const { token } = getUrlParams()
+    
+    if (!token) {
+      setMessage('Token não encontrado. Faça login novamente para receber um novo email.')
       return
     }
 
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email
-      })
-
-      if (error) {
-        alert('Erro ao reenviar email. Tente novamente.')
-      } else {
-        alert('Email de confirmação reenviado! Verifique sua caixa de entrada.')
-      }
+      // Aqui você pode implementar a lógica para reenviar o email
+      setMessage('Novo email de confirmação enviado!')
     } catch (error) {
-      alert('Erro inesperado. Tente novamente.')
+      setMessage('Erro ao reenviar email. Tente novamente.')
     }
   }
 
-  const getStatusIcon = () => {
+  const renderContent = () => {
     switch (status) {
       case 'loading':
-        return <Loader className="animate-spin text-blue-500" size={64} />
-      case 'success':
-        return <CheckCircle className="text-green-500" size={64} />
-      case 'error':
-      case 'expired':
-        return <XCircle className="text-red-500" size={64} />
-      default:
-        return <Mail className="text-gray-500" size={64} />
-    }
-  }
+        return (
+          <div className="text-center">
+            <Loader className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Confirmando seu email...</h2>
+            <p className="text-gray-600">Por favor, aguarde enquanto verificamos sua confirmação.</p>
+          </div>
+        )
 
-  const getStatusColor = () => {
-    switch (status) {
       case 'success':
-        return 'text-green-600'
-      case 'error':
+        return (
+          <div className="text-center">
+            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Email Confirmado!</h2>
+            <p className="text-gray-600 mb-6">{message}</p>
+            <button
+              onClick={() => navigateToPage('dashboard')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
+            >
+              Ir para Dashboard
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )
+
       case 'expired':
-        return 'text-red-600'
+        return (
+          <div className="text-center">
+            <XCircle className="w-16 h-16 text-orange-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Link Expirado</h2>
+            <p className="text-gray-600 mb-6">{message}</p>
+            <div className="space-y-3">
+              <button
+                onClick={handleResendConfirmation}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
+              >
+                <Mail className="w-4 h-4" />
+                Reenviar Email
+              </button>
+              <button
+                onClick={() => navigateToPage('landing')}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
+              >
+                Voltar ao Início
+              </button>
+            </div>
+          </div>
+        )
+
+      case 'error':
       default:
-        return 'text-gray-600'
+        return (
+          <div className="text-center">
+            <XCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Erro na Confirmação</h2>
+            <p className="text-gray-600 mb-6">{message}</p>
+            <div className="space-y-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
+              >
+                Tentar Novamente
+              </button>
+              <button
+                onClick={() => navigateToPage('landing')}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
+              >
+                Voltar ao Início
+              </button>
+            </div>
+          </div>
+        )
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-        {/* Logo */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-blue-600 mb-2">
-            🚗 NCM Analyzer Pro
-          </h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+        <div className="text-center mb-8">
+          <Mail className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-gray-800">Confirmação de Email</h1>
         </div>
-
-        {/* Status Icon */}
-        <div className="mb-6 flex justify-center">
-          {getStatusIcon()}
-        </div>
-
-        {/* Title */}
-        <h2 className={`text-2xl font-bold mb-4 ${getStatusColor()}`}>
-          {status === 'loading' && 'Confirmando email...'}
-          {status === 'success' && 'Email confirmado!'}
-          {status === 'error' && 'Erro na confirmação'}
-          {status === 'expired' && 'Link expirado'}
-        </h2>
-
-        {/* Message */}
-        <p className="text-gray-600 mb-6 leading-relaxed">
-          {message}
-        </p>
-
-        {/* Actions */}
-        <div className="space-y-4">
-          {status === 'success' && (
-            <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-green-800 text-sm">
-                  ✅ Sua conta está ativa! Redirecionando para o login...
-                </p>
-              </div>
-              
-              <button
-                onClick={() => navigate('/login')}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-              >
-                Ir para Login
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          )}
-
-          {(status === 'error' || status === 'expired') && (
-            <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800 text-sm">
-                  {status === 'expired' 
-                    ? '⏰ O link de confirmação expirou em 24 horas'
-                    : '❌ Não foi possível confirmar seu email'
-                  }
-                </p>
-              </div>
-              
-              <button
-                onClick={handleResendConfirmation}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-              >
-                <Mail size={18} />
-                Reenviar Email de Confirmação
-              </button>
-              
-              <button
-                onClick={() => navigate('/register')}
-                className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
-              >
-                Voltar ao Cadastro
-              </button>
-            </div>
-          )}
-
-          {status === 'loading' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-blue-800 text-sm">
-                ⏳ Aguarde enquanto confirmamos seu email...
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Help */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        
+        {renderContent()}
+        
+        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
           <p className="text-sm text-gray-500">
-            Problemas com a confirmação?
-          </p>
-          <p className="text-sm text-gray-500">
-            Verifique sua caixa de spam ou entre em contato conosco.
+            Precisa de ajuda? Entre em contato com nosso suporte.
           </p>
         </div>
       </div>

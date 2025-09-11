@@ -44,12 +44,14 @@ export const getCurrentUser = async (): Promise<User | null> => {
   return user
 }
 
-export const signUp = async (email: string, password: string): Promise<{ user: User | null; error: any }> => {
+export const signUp = async (email: string, password: string, fullName?: string): Promise<{ user: User | null; error: any }> => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`
+      data: {
+        full_name: fullName || email
+      }
     }
   })
   return { user: data.user, error }

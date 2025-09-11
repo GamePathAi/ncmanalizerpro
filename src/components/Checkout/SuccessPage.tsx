@@ -13,7 +13,7 @@ interface PaymentData {
   currency: string;
   customerEmail: string;
   customerName: string;
-  planType: 'annual' | 'lifetime';
+  planType: 'monthly' | 'annual';
   subscriptionId?: string;
   invoiceUrl?: string;
 }
@@ -27,7 +27,15 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
 
   useEffect(() => {
     const verifyPayment = async () => {
-      if (!sessionId) {
+      // Tentar obter sessionId dos props ou da URL
+      let currentSessionId = sessionId;
+      
+      if (!currentSessionId) {
+        const urlParams = new URLSearchParams(window.location.search);
+        currentSessionId = urlParams.get('session_id') || undefined;
+      }
+      
+      if (!currentSessionId) {
         setError('ID da sessão não encontrado');
         setLoading(false);
         return;
@@ -35,7 +43,7 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
 
       try {
         // Verificar status do pagamento
-        const paymentInfo = await verifyPaymentStatus(sessionId);
+        const paymentInfo = await verifyPaymentStatus(currentSessionId);
         setPaymentData(paymentInfo);
 
         // Recuperar dados do cliente salvos no localStorage
@@ -128,7 +136,7 @@ const SuccessPage: React.FC<SuccessPageProps> = ({ sessionId, onContinue }) => {
                 <div className="flex justify-between items-center py-3 border-b border-gray-600">
                   <span className="text-gray-300">Plano:</span>
                   <span className="text-white font-semibold">
-                    {paymentData.planType === 'annual' ? 'NCM Pro - Anual' : 'NCM Pro - Vitalício'}
+                    {paymentData.planType === 'monthly' ? 'NCM Pro - Mensal' : 'NCM Pro - Anual'}
                   </span>
                 </div>
                 

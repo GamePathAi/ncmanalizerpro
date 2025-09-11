@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Shield, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { STRIPE_PRODUCTS, formatPrice, redirectToCheckout } from '../../lib/stripe';
+import { PRICING_PLANS, formatPrice, redirectToCheckout } from '../../lib/stripe';
 
 interface CheckoutPageProps {
   onSuccess: () => void;
@@ -27,13 +27,13 @@ interface FormData {
 
 const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
   const { user } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<'annual' | 'lifetime'>('annual');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Recuperar plano selecionado do localStorage
   useEffect(() => {
-    const storedPlan = localStorage.getItem('selectedPlan') as 'annual' | 'lifetime';
+    const storedPlan = localStorage.getItem('selectedPlan') as 'monthly' | 'annual';
     if (storedPlan) {
       setSelectedPlan(storedPlan);
     }
@@ -55,7 +55,15 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
     }
   });
 
-  const product = selectedPlan === 'annual' ? STRIPE_PRODUCTS.ANNUAL : STRIPE_PRODUCTS.LIFETIME;
+  const product = selectedPlan === 'monthly' ? {
+      priceId: PRICING_PLANS[1].stripePriceIdMonthly,
+      amount: PRICING_PLANS[1].monthlyPrice * 100,
+      name: `${PRICING_PLANS[1].name} - Mensal`
+    } : {
+      priceId: PRICING_PLANS[1].stripePriceIdYearly,
+      amount: PRICING_PLANS[1].yearlyPrice * 100,
+      name: `${PRICING_PLANS[1].name} - Anual`
+    };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -142,7 +150,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-900 py-8">
+    <div className="checkout-page py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-center mb-8">
@@ -158,9 +166,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Formulário */}
           <div className="lg:col-span-2">
-            <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-gray-700 rounded-xl p-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Finalizar Compra</h1>
-              <p className="text-gray-400 mb-8">Preencha seus dados para continuar</p>
+            <div className="checkout-form-card rounded-xl p-8">
+              <h1 className="checkout-title text-3xl font-bold mb-2">Finalizar Compra</h1>
+              <p className="checkout-subtitle mb-8">Preencha seus dados para continuar</p>
 
               {error && (
                 <div className="bg-red-900/50 border border-red-500/50 rounded-lg p-4 mb-6 flex items-center gap-3">
@@ -172,10 +180,10 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Dados Pessoais */}
                 <div>
-                  <h3 className="text-xl font-semibold text-white mb-4">Dados Pessoais</h3>
+                  <h3 className="checkout-title text-xl font-semibold mb-4">Dados Pessoais</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Nome Completo *
                       </label>
                       <input
@@ -184,13 +192,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         required
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="Seu nome completo"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Email *
                       </label>
                       <input
@@ -199,13 +207,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         required
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="seu@email.com"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         CPF/CNPJ *
                       </label>
                       <input
@@ -214,14 +222,14 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         required
                         value={formatCpfCnpj(formData.cpfCnpj)}
                         onChange={(e) => setFormData(prev => ({ ...prev, cpfCnpj: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="000.000.000-00"
                         maxLength={18}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Telefone
                       </label>
                       <input
@@ -229,7 +237,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         name="phone"
                         value={formatPhone(formData.phone)}
                         onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="(11) 99999-9999"
                         maxLength={15}
                       />
@@ -239,9 +247,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
 
                 {/* Dados da Empresa */}
                 <div>
-                  <h3 className="text-xl font-semibold text-white mb-4">Dados da Empresa (Opcional)</h3>
+                  <h3 className="checkout-title text-xl font-semibold mb-4">Dados da Empresa (Opcional)</h3>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="checkout-label block text-sm font-medium mb-2">
                       Nome da Empresa
                     </label>
                     <input
@@ -249,7 +257,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                       name="company"
                       value={formData.company}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                       placeholder="Nome da sua empresa"
                     />
                   </div>
@@ -257,10 +265,10 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
 
                 {/* Endereço */}
                 <div>
-                  <h3 className="text-xl font-semibold text-white mb-4">Endereço (Opcional)</h3>
+                  <h3 className="checkout-title text-xl font-semibold mb-4">Endereço (Opcional)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         CEP
                       </label>
                       <input
@@ -268,14 +276,14 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         name="address.zipCode"
                         value={formatZipCode(formData.address.zipCode)}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="00000-000"
                         maxLength={9}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Rua
                       </label>
                       <input
@@ -283,13 +291,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         name="address.street"
                         value={formData.address.street}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="Nome da rua"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Número
                       </label>
                       <input
@@ -297,13 +305,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         name="address.number"
                         value={formData.address.number}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="123"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Bairro
                       </label>
                       <input
@@ -311,13 +319,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         name="address.neighborhood"
                         value={formData.address.neighborhood}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="Nome do bairro"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Cidade
                       </label>
                       <input
@@ -325,20 +333,20 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         name="address.city"
                         value={formData.address.city}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="Nome da cidade"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Estado
                       </label>
                       <select
                         name="address.state"
                         value={formData.address.state}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                       >
                         <option value="">Selecione o estado</option>
                         <option value="AC">Acre</option>
@@ -372,7 +380,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                     </div>
                     
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="checkout-label block text-sm font-medium mb-2">
                         Complemento
                       </label>
                       <input
@@ -380,7 +388,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
                         name="address.complement"
                         value={formData.address.complement}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="checkout-input w-full px-4 py-3 rounded-lg focus:ring-2"
                         placeholder="Apartamento, sala, etc."
                       />
                     </div>
@@ -411,8 +419,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSuccess, onCancel }) => {
 
           {/* Resumo do Pedido */}
           <div className="lg:col-span-1">
-            <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-gray-700 rounded-xl p-6 sticky top-8">
-              <h3 className="text-xl font-semibold text-white mb-6">Resumo do Pedido</h3>
+            <div className="checkout-form-card rounded-xl p-6 sticky top-8">
+              <h3 className="checkout-title text-xl font-semibold mb-6">Resumo do Pedido</h3>
               
               <div className="space-y-4">
                 <div className="flex justify-between items-start">

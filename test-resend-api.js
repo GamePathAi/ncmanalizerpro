@@ -1,32 +1,59 @@
-import { Resend } from 'resend';
-import dotenv from 'dotenv';
+// Teste da API do Resend para diagnosticar problemas
+import { createClient } from '@supabase/supabase-js';
 
-dotenv.config();
+// Configuração do Supabase
+const supabaseUrl = 'https://fsntzljufghutoyqxokm.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzbnR6bGp1ZmdodXRveXF4b2ttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzE0NzYsImV4cCI6MjA1MDU0NzQ3Nn0.Ej6Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function testResendAPI() {
-  console.log('🧪 Testando API Key do Resend...');
-  console.log('📧 API Key:', process.env.RESEND_API_KEY);
+  console.log('🔍 Testando configuração da API Resend...');
   
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: ['gamepathai@gmail.com'], // Seu email autorizado
-      subject: 'Teste API Resend - NCM Pro',
-      html: '<p>✅ Teste de conectividade com Resend funcionando!</p>',
+    // Teste 1: Verificar se a Edge Function está acessível
+    console.log('\n1. Testando conectividade com Edge Function...');
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
+      method: 'OPTIONS',
+      headers: {
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json'
+      }
     });
-
-    if (error) {
-      console.log('❌ Erro na API do Resend:', error);
-      return false;
+    
+    if (response.ok) {
+      console.log('✅ Edge Function acessível');
+    } else {
+      console.log('❌ Edge Function não acessível:', response.status);
     }
-
-    console.log('✅ Email enviado com sucesso! ID:', data.id);
-    return true;
+    
+    // Teste 2: Testar envio de email com dados válidos
+    console.log('\n2. Testando envio de email...');
+    const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: 'teste@exemplo.com',
+        confirmationUrl: 'https://exemplo.com/confirm?token=123',
+        userId: 'test-user-id'
+      })
+    });
+    
+    const emailResult = await emailResponse.json();
+    
+    if (emailResponse.ok) {
+      console.log('✅ Email enviado com sucesso:', emailResult);
+    } else {
+      console.log('❌ Erro ao enviar email:');
+      console.log('Status:', emailResponse.status);
+      console.log('Resposta:', emailResult);
+    }
+    
   } catch (error) {
-    console.log('❌ Erro ao testar API:', error.message);
-    return false;
+    console.error('❌ Erro geral:', error);
   }
 }
 

@@ -1,15 +1,36 @@
 # Multi-stage build for NCM Analyzer Pro
 
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
+
+# Accept build arguments
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_STRIPE_PUBLISHABLE_KEY
+ARG VITE_APP_NAME
+ARG VITE_APP_URL
+ARG VITE_STRIPE_ANNUAL_PRICE_ID
+ARG VITE_STRIPE_LIFETIME_PRICE_ID
+
+# Set environment variables for build
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
+ENV VITE_APP_NAME=$VITE_APP_NAME
+ENV VITE_APP_URL=$VITE_APP_URL
+ENV VITE_STRIPE_ANNUAL_PRICE_ID=$VITE_STRIPE_ANNUAL_PRICE_ID
+ENV VITE_STRIPE_LIFETIME_PRICE_ID=$VITE_STRIPE_LIFETIME_PRICE_ID
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (including dev dependencies for build)
+RUN npm ci
+
+# Copy .env file first
+COPY .env ./
 
 # Copy source code
 COPY . .
@@ -20,22 +41,19 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine AS production
 
-# Install security updates
-RUN apk update && apk upgrade
-
 # Copy built application
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create nginx user and set permissions
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx && \
-    chown -R nginx:nginx /usr/share/nginx/html && \
+# Set permissions for nginx user (nginx user already exists in nginx:alpine)
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    touch /var/run/nginx.pid && \
+    chown nginx:nginx /var/run/nginx.pid
 
 # Switch to non-root user
 USER nginx
@@ -45,7 +63,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

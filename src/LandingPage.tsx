@@ -484,16 +484,21 @@ const LandingPage = () => {
 
       {/* Modal de Autenticação */}
       {showAuthForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {authMode === 'login' ? 'Entrar' : 'Criar Conta'}
-                </h2>
+        <div className="fixed inset-0 bg-gradient-to-br from-black/80 via-slate-900/90 to-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-slate-950 border-2 border-orange-500/30 rounded-2xl max-w-lg w-full max-h-[95vh] overflow-y-auto shadow-2xl shadow-orange-500/10">
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gradient-to-r from-orange-500 to-red-500 p-2 rounded-xl">
+                    <LogIn className="text-white" size={24} />
+                  </div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                    {authMode === 'login' ? 'Entrar' : 'Criar Conta'}
+                  </h2>
+                </div>
                 <button
                   onClick={() => setShowAuthForm(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 hover:text-orange-400 text-3xl font-bold transition-colors duration-200 hover:bg-slate-800/50 rounded-lg p-2"
                 >
                   ×
                 </button>

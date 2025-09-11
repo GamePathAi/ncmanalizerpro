@@ -60,7 +60,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'NCM Analyzer Pro <noreply@seudominio.com>',
+        from: 'NCM Analyzer Pro <onboarding@resend.dev>',
         to: [email],
         subject: 'Bem-vindo ao NCM Analyzer Pro! 🎉',
         html: `

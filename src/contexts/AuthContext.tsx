@@ -1,16 +1,47 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { supabase, getCurrentUser, signUp as supabaseSignUp, signIn as supabaseSignIn } from '../lib/supabase'
-import type { User } from '@supabase/supabase-js'
 import type { UserProfile } from '../types'
 import { totpService } from '../lib/totp'
+import { useUserState, type UserSubscriptionStatus, type UserState as UserStateType } from '../hooks/useUserState'
+import type { User } from '@supabase/supabase-js'
+
+// Estados possíveis do usuário
+export type UserState = 'pending_email' | 'pending_subscription' | 'active'
+
+// Função para determinar o estado do usuário (mantida para compatibilidade)
+export const getUserState = (user: User | null, userProfile: UserProfile | null): UserState => {
+  if (!user) return 'pending_email'
+  
+  // Se o email não foi confirmado
+  if (!user.email_confirmed_at) {
+    return 'pending_email'
+  }
+  
+  // Se o email foi confirmado mas não tem assinatura ativa
+  const hasActiveSubscription = userProfile?.subscription_status === 'active'
+  if (!hasActiveSubscription) {
+    return 'pending_subscription'
+  }
+  
+  // Se tem email confirmado e assinatura ativa
+  return 'active'
+}
 
 interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
   isSubscribed: boolean
-  signUp: (email: string, password: string) => Promise<any>
+  userState: UserState
+  // Novos campos do sistema de estados
+  userStateData: UserStateType | null
+  canAccessDashboard: boolean
+  needsEmailVerification: boolean
+  needsSubscription: boolean
+  refreshUserState: () => Promise<void>
+  // Métodos de autenticação
+  signUp: (email: string, password: string, fullName?: string) => Promise<any>
   signIn: (email: string, password: string, totpCode?: string) => Promise<any>
   signOut: () => Promise<void>
   refreshUserProfile: () => Promise<void>
@@ -43,6 +74,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [pendingTotpSecret, setPendingTotpSecret] = useState<string | null>(null)
+  
+  // Integrar com o novo sistema de estados
+  const {
+    userState: userStateData,
+    loading: userStateLoading,
+    canAccessDashboard,
+    needsEmailVerification,
+    needsSubscription,
+    refreshUserState
+  } = useUserState(user)
+  
+  // Calcular estado do usuário (compatibilidade)
+  const userState = getUserState(user, userProfile)
 
   const refreshUserProfile = async () => {
     if (!user) {
@@ -66,16 +110,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUserProfile(profile)
 
       // Verificar status da assinatura
-      const isActive = profile?.subscription_status === 'active' || profile?.subscription_type === 'lifetime'
+      const isActive = profile?.subscription_status === 'active'
       setIsSubscribed(isActive)
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error)
     }
   }
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, fullName?: string) => {
     try {
-      const result = await supabaseSignUp(email, password)
+      const result = await supabaseSignUp(email, password, fullName)
       return result
     } catch (error) {
       console.error('Erro no cadastro:', error)
@@ -87,13 +131,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const result = await supabaseSignIn(email, password)
       
-      // Se login básico foi bem-sucedido, verificar se TOTP está habilitado
+      // Se login básico foi bem-sucedido, verificar perfil do usuário
       if (result.user && !result.error) {
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('totp_enabled')
+          .select('totp_enabled, subscription_status, subscription_type')
           .eq('id', result.user.id)
           .single()
+        
+        // Verificar se o email foi confirmado
+        if (!result.user.email_confirmed_at) {
+          await supabase.auth.signOut()
+          return { 
+            user: null, 
+            error: { 
+              message: 'EMAIL_NOT_CONFIRMED', 
+              requiresEmailConfirmation: true,
+              details: 'Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada.'
+            }
+          }
+        }
         
         // Se TOTP está habilitado mas código não foi fornecido
         if (profile?.totp_enabled && !totpCode) {
@@ -333,8 +390,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     userProfile,
-    loading,
+    loading: loading || userStateLoading,
     isSubscribed,
+    userState,
+    // Novos campos do sistema de estados
+    userStateData,
+    canAccessDashboard,
+    needsEmailVerification,
+    needsSubscription,
+    refreshUserState,
+    // Métodos de autenticação
     signUp,
     signIn,
     signOut,
