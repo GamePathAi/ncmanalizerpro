@@ -1,6 +1,6 @@
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "fsntzljufghutoyqxokm"
+project_id = "ncmpro-app"
 
 [api]
 enabled = true
@@ -31,8 +31,8 @@ file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["https://localhost:5173"]
+site_url = "http://localhost:5174"
+additional_redirect_urls = ["http://localhost:5174", "https://localhost:5174"]
 jwt_expiry = 3600
 enable_signup = true
 
@@ -51,4 +51,10 @@ enabled = false
 verify_jwt = false
 
 [functions.send-confirmation-email]
+verify_jwt = false
+
+[functions.password-recovery]
+verify_jwt = false
+
+[functions.resend-webhook]
 verify_jwt = false

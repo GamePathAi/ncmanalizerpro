@@ -8,6 +8,7 @@ export interface UserState {
   id: string;
   email: string;
   subscription_status: UserSubscriptionStatus;
+  user_state: UserSubscriptionStatus;
   email_verified_at: string | null;
   stripe_customer_id: string | null;
   can_access_dashboard: boolean;
@@ -56,6 +57,7 @@ export function useUserState(user: User | null): UseUserStateReturn {
               id: user.id,
               email: user.email || '',
               subscription_status: user.email_confirmed_at ? 'pending_subscription' : 'pending_email',
+              user_state: user.email_confirmed_at ? 'pending_subscription' : 'pending_email',
               email_verified_at: user.email_confirmed_at
             })
             .select()
@@ -67,7 +69,7 @@ export function useUserState(user: User | null): UseUserStateReturn {
 
           setUserState({
             ...newProfile,
-            can_access_dashboard: newProfile.subscription_status === 'active'
+            can_access_dashboard: newProfile.user_state === 'active'
           });
         } else {
           throw profileError;
@@ -77,11 +79,12 @@ export function useUserState(user: User | null): UseUserStateReturn {
         let updatedProfile = profile;
         
         // Verificar se precisa atualizar status de subscription baseado na confirmação de email
-        if (user.email_confirmed_at && profile.subscription_status === 'pending_email') {
+        if (user.email_confirmed_at && profile.user_state === 'pending_email') {
           const { data: updated, error: updateError } = await supabase
             .from('user_profiles')
             .update({
-              subscription_status: 'pending_subscription'
+              subscription_status: 'pending_subscription',
+              user_state: 'pending_subscription'
             })
             .eq('id', user.id)
             .select()
@@ -96,7 +99,7 @@ export function useUserState(user: User | null): UseUserStateReturn {
 
         setUserState({
           ...updatedProfile,
-          can_access_dashboard: updatedProfile.subscription_status === 'active'
+          can_access_dashboard: updatedProfile.user_state === 'active'
         });
       }
     } catch (err) {
@@ -115,9 +118,9 @@ export function useUserState(user: User | null): UseUserStateReturn {
     await fetchUserState();
   };
 
-  const canAccessDashboard = userState?.subscription_status === 'active';
-  const needsEmailVerification = userState?.subscription_status === 'pending_email';
-  const needsSubscription = userState?.subscription_status === 'pending_subscription';
+  const canAccessDashboard = userState?.user_state === 'active';
+  const needsEmailVerification = userState?.user_state === 'pending_email';
+  const needsSubscription = userState?.user_state === 'pending_subscription';
 
   return {
     userState,

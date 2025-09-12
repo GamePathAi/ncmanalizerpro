@@ -47,13 +47,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
         }
 
         if (user) {
-          setSuccess('Conta criada com sucesso! Escolha seu plano para começar a economizar nas suas importações.')
+          setSuccess('Conta criada com sucesso! Verifique seu email para confirmar sua conta.')
           
           // Aguardar um momento para mostrar a mensagem
           setTimeout(() => {
-            // Redirecionar para página de preços para escolher plano
+            // Redirecionar para página de verificação de email
             window.dispatchEvent(new CustomEvent('navigate', { 
-              detail: { page: 'pricing' } 
+              detail: { page: 'email-verification' } 
             }))
           }, 2000)
         }
@@ -267,6 +267,18 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onSuccess }) =>
       </form>
 
       <div className="mt-8 text-center">
+        {mode === 'login' && (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'forgot-password' } }))}
+              className="text-orange-600 hover:text-orange-500 font-medium transition-colors text-sm hover:underline"
+            >
+              🔑 Esqueci minha senha
+            </button>
+          </div>
+        )}
+        
         <p className="text-black/70 text-base font-medium">
           {mode === 'login' ? 'Não tem uma conta?' : 'Já tem uma conta?'}
         </p>

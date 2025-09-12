@@ -5,7 +5,7 @@ import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { loadStripe } from '@stripe/stripe-js'
 
 // Inicializar Stripe
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!)
 
 interface PricingPlan {
   id: string
@@ -80,7 +80,7 @@ export const PricingPage: React.FC = () => {
 
   const handleSubscribe = async (plan: PricingPlan) => {
     if (!user) {
-      setError('Você precisa estar logado para assinar um plano')
+      setError('Você precisa fazer login primeiro para assinar um plano')
       return
     }
 

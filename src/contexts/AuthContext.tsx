@@ -19,7 +19,7 @@ export const getUserState = (user: User | null, userProfile: UserProfile | null)
   }
   
   // Se o email foi confirmado mas não tem assinatura ativa
-  const hasActiveSubscription = userProfile?.subscription_status === 'active'
+  const hasActiveSubscription = userProfile?.user_state === 'active'
   if (!hasActiveSubscription) {
     return 'pending_subscription'
   }
@@ -45,6 +45,7 @@ interface AuthContextType {
   signIn: (email: string, password: string, totpCode?: string) => Promise<any>
   signOut: () => Promise<void>
   refreshUserProfile: () => Promise<void>
+  resendVerificationEmail: () => Promise<void>
   // Métodos TOTP
   enableTOTP: (totpCode: string) => Promise<{ success: boolean; secret?: string; backupCodes?: string[]; error?: string }>
   disableTOTP: (totpCode: string) => Promise<{ success: boolean; error?: string }>
@@ -193,6 +194,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Erro no logout:', error)
       throw error
+    }
+  }
+
+  // Método para reenviar email de verificação
+  const resendVerificationEmail = async () => {
+    if (!user?.email) {
+      throw new Error('Usuário não encontrado ou email não disponível')
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('auth-endpoints', {
+        body: {
+          action: 'resend-verification'
+        }
+      })
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao reenviar email de verificação')
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Falha ao reenviar email')
+      }
+    } catch (error: any) {
+      console.error('Erro ao reenviar email de verificação:', error)
+      throw new Error(error.message || 'Erro interno do servidor')
     }
   }
 
@@ -404,6 +431,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signOut,
     refreshUserProfile,
+    resendVerificationEmail,
     // Métodos TOTP
     enableTOTP,
     disableTOTP,

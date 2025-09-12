@@ -22,7 +22,37 @@ const EmailConfirmation: React.FC = () => {
   }
 
   useEffect(() => {
-    const confirmEmail = async () => {
+    const handleEmailConfirmation = async () => {
+      // Verificar se há erro nos parâmetros da URL
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const error = hashParams.get('error')
+      const errorDescription = hashParams.get('error_description')
+      const errorCode = hashParams.get('error_code')
+      
+      if (error) {
+        console.error('Erro na confirmação:', { error, errorDescription, errorCode })
+        
+        if (errorCode === 'otp_expired' || error === 'access_denied') {
+          setStatus('expired')
+          setMessage('O link de confirmação expirou ou é inválido. Solicite um novo link.')
+        } else {
+          setStatus('error')
+          setMessage(`Erro na confirmação: ${errorDescription || error}`)
+        }
+        return
+      }
+      
+      // Se não há erro, verificar tokens de sucesso
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
+      
+      if (accessToken && refreshToken) {
+        // Redirecionar para o callback que processará os tokens
+        navigateToPage('auth/callback')
+        return
+      }
+      
+      // Fallback: verificar parâmetros de query tradicionais
       const { token, type } = getUrlParams()
       
       if (!token || type !== 'signup') {
@@ -66,7 +96,7 @@ const EmailConfirmation: React.FC = () => {
       }
     }
 
-    confirmEmail()
+    handleEmailConfirmation()
   }, [])
 
   const handleResendConfirmation = async () => {

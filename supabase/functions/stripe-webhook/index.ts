@@ -82,20 +82,23 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   
   console.log('Atualizando status de assinatura para:', { userEmail, customerId })
   
-  // Usar a função update_subscription_status para atualizar o estado
+  // Atualizar user_state para 'active' após pagamento bem-sucedido
   const { data, error } = await supabase
-    .rpc('update_subscription_status', {
-      user_email: userEmail,
-      customer_id: customerId,
-      status: 'active'
+    .from('user_profiles')
+    .update({
+      user_state: 'active',
+      stripe_customer_id: customerId,
+      updated_at: new Date().toISOString()
     })
+    .eq('email', userEmail)
+    .select('id, email')
   
   if (error) {
-    console.error('Erro ao atualizar status de assinatura:', error)
-  } else if (data) {
-    console.log('Status de assinatura atualizado com sucesso para:', userEmail)
+    console.error('Erro ao atualizar user_state:', error)
+  } else if (data && data.length > 0) {
+    console.log('User_state atualizado para active:', userEmail)
     
-    // Atualizar campos adicionais se necessário
+    // Atualizar campos adicionais da assinatura
     await supabase
       .from('user_profiles')
       .update({
@@ -117,13 +120,13 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   const { error } = await supabase
     .from('user_profiles')
     .update({
-      subscription_status: 'active',
+      user_state: 'active',
       subscription_id: subscription.id,
       subscription_start_date: new Date(subscription.current_period_start * 1000).toISOString(),
       subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('customer_id', subscription.customer)
+    .eq('stripe_customer_id', subscription.customer)
     
   if (error) {
     console.error('Erro ao criar assinatura:', error)
@@ -133,10 +136,16 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   console.log('Assinatura atualizada:', subscription.id)
   
+  // Mapear status do Stripe para user_state
+  let userState = 'pending_subscription'
+  if (['active', 'trialing'].includes(subscription.status)) {
+    userState = 'active'
+  }
+  
   const { error } = await supabase
     .from('user_profiles')
     .update({
-      subscription_status: subscription.status,
+      user_state: userState,
       subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
       updated_at: new Date().toISOString()
     })
@@ -153,7 +162,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const { error } = await supabase
     .from('user_profiles')
     .update({
-      subscription_status: 'canceled',
+      user_state: 'pending_subscription',
       updated_at: new Date().toISOString()
     })
     .eq('subscription_id', subscription.id)
@@ -170,7 +179,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     const { error } = await supabase
       .from('user_profiles')
       .update({
-        subscription_status: 'active',
+        user_state: 'active',
         updated_at: new Date().toISOString()
       })
       .eq('subscription_id', invoice.subscription)
@@ -185,10 +194,11 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   console.log('Falha no pagamento:', invoice.id)
   
   if (invoice.subscription) {
+    // Manter como active mas poderia ser pending_subscription dependendo da regra de negócio
     const { error } = await supabase
       .from('user_profiles')
       .update({
-        subscription_status: 'past_due',
+        user_state: 'active', // Manter ativo mesmo com falha, ou mudar para 'pending_subscription'
         updated_at: new Date().toISOString()
       })
       .eq('subscription_id', invoice.subscription)
