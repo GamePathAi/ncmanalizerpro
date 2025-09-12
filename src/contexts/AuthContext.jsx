@@ -59,6 +59,13 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error) {
+        // PGRST116 significa que não há perfil - isso é normal para usuários novos
+        if (error.code === 'PGRST116') {
+          console.log('Perfil não encontrado para usuário:', userId);
+          setProfile(null);
+          return;
+        }
+        
         console.error('Erro ao buscar perfil:', error);
         setProfile(null);
         return;
