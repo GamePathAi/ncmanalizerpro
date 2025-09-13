@@ -1,6 +1,6 @@
-const { Resend } = require('resend');
-const { emailVerificationTemplate, resendVerificationTemplate } = require('../templates/emailVerification');
-const crypto = require('crypto');
+import { Resend } from 'resend';
+import { emailVerificationTemplate, resendVerificationTemplate } from '../templates/emailVerification.js';
+import crypto from 'crypto';
 
 // Configuração do Resend com fallback para a chave fornecida
 const resend = new Resend(process.env.RESEND_API_KEY || 're_cUYtKFVN_PKKTwpTDy81aaDFZNWKmwYsz');
@@ -612,7 +612,7 @@ const checkEmailRateLimit = (email, maxEmails = 5, windowMs = 60000) => {
   return true;
 };
 
-module.exports = {
+export {
   sendVerificationEmail,
   resendVerificationEmail,
   sendWelcomeEmail,

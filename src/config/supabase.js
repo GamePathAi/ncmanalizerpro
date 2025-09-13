@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 // Validar variáveis de ambiente
 if (!process.env.SUPABASE_URL) {
@@ -219,12 +219,4 @@ if (process.env.NODE_ENV === 'production') {
   setInterval(cleanupExpiredTokens, 60 * 60 * 1000); // 1 hora
 }
 
-module.exports = {
-  supabase,
-  supabasePublic,
-  testConnection,
-  createTables,
-  cleanupExpiredTokens,
-  getDatabaseStats,
-  backupCriticalData
-};
+export {   supabase,   supabasePublic,   testConnection,   createTables,   cleanupExpiredTokens,   getDatabaseStats,   backupCriticalData };

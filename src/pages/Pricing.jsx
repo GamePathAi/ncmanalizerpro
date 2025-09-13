@@ -31,7 +31,7 @@ const Pricing = () => {
 
   // Redirecionar se usuário já tem assinatura ativa
   useEffect(() => {
-    if (!authLoading && hasActiveSubscription()) {
+    if (!authLoading && hasActiveSubscription) {
       navigate('/dashboard');
     }
   }, [authLoading, hasActiveSubscription, navigate]);
@@ -142,34 +142,44 @@ const Pricing = () => {
         throw new Error('Price ID não configurado para este plano');
       }
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado');
+      // Importar supabase dinamicamente
+      const { supabase } = await import('../lib/supabase');
+      
+      // Obter token de sessão atual
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session?.access_token) {
+        throw new Error('Sessão de autenticação não encontrada');
       }
 
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      // Usar Edge Function do Supabase
+      const functionsUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      
+      const response = await fetch(`${functionsUrl}/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           priceId,
-          planName: plan.name,
-          billingCycle,
-          successUrl: `${window.location.origin}/dashboard?success=true`,
-          cancelUrl: `${window.location.origin}/pricing?cancelled=true`
+          userId: user.id,
+          userEmail: user.email
         })
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao criar sessão de checkout');
+        throw new Error(data.error || 'Erro ao criar sessão de checkout');
       }
 
       // Redirecionar para o Stripe Checkout
-      window.location.href = data.url;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('URL de checkout não retornada');
+      }
 
     } catch (error) {
       console.error('Erro ao criar checkout:', error);

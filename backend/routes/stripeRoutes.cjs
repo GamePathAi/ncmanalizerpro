@@ -1,7 +1,7 @@
 const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { supabase } = require('../config/supabase');
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { supabase } = require('../config/supabase.cjs');
+const { verifyToken } = require('../middleware/authMiddleware.cjs');
 const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
@@ -20,7 +20,7 @@ const paymentLimiter = rateLimit({
 /**
  * Criar sessão do Stripe Checkout
  */
-router.post('/create-checkout-session', paymentLimiter, authenticateToken, async (req, res) => {
+router.post('/create-checkout-session', paymentLimiter, verifyToken, async (req, res) => {
   try {
     const { priceId, successUrl, cancelUrl } = req.body;
     const userId = req.user.id;
@@ -166,7 +166,7 @@ router.post('/create-checkout-session', paymentLimiter, authenticateToken, async
 /**
  * Obter informações da sessão de checkout
  */
-router.get('/checkout-session/:sessionId', authenticateToken, async (req, res) => {
+router.get('/checkout-session/:sessionId', verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user.id;
@@ -213,7 +213,7 @@ router.get('/checkout-session/:sessionId', authenticateToken, async (req, res) =
 /**
  * Criar portal do cliente para gerenciar assinatura
  */
-router.post('/create-portal-session', authenticateToken, async (req, res) => {
+router.post('/create-portal-session', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const { returnUrl } = req.body;
@@ -305,7 +305,7 @@ router.get('/prices', async (req, res) => {
 /**
  * Obter informações da assinatura atual
  */
-router.get('/subscription', authenticateToken, async (req, res) => {
+router.get('/subscription', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
 

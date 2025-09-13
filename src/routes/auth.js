@@ -1,10 +1,10 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const { Resend } = require('resend');
-const { createClient } = require('@supabase/supabase-js');
-const rateLimit = require('express-rate-limit');
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { Resend } from 'resend';
+import { createClient } from '@supabase/supabase-js';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 
@@ -380,4 +380,17 @@ router.post('/logout', (req, res) => {
   res.json({ message: 'Logout realizado com sucesso' });
 });
 
-module.exports = router;
+// Função para verificar assinatura ativa
+const hasActiveSubscription = async (userId) => {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .single();
+
+  return !error && data;
+};
+
+
+export default router;

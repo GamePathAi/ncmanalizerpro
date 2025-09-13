@@ -26,7 +26,7 @@ const ProtectedRoute = ({
     };
 
     verifyAuth();
-  }, [loading, checkAuthStatus]);
+  }, [loading]);
 
   // Mostrar loading enquanto verifica autenticação
   if (loading || isChecking) {
@@ -210,7 +210,7 @@ export const useAccessControl = () => {
       case 'email_verified':
         return isEmailVerified();
       case 'active_subscription':
-        return hasActiveSubscription();
+        return hasActiveSubscription;
       case 'any_authenticated':
         return ['pending_email', 'pending_subscription', 'active'].includes(getUserStatus());
       default:
@@ -238,7 +238,7 @@ export const useAccessControl = () => {
     getRedirectPath,
     userStatus: getUserStatus(),
     isEmailVerified: isEmailVerified(),
-    hasActiveSubscription: hasActiveSubscription(),
+    hasActiveSubscription: hasActiveSubscription,
     canAccessDashboard: canAccessDashboard()
   };
 };
@@ -260,7 +260,7 @@ export const usePermissions = () => {
     canAccessPricing: isEmailVerified(),
     needsEmailVerification: needsEmailVerification(),
     needsSubscription: needsSubscription(),
-    hasActiveSubscription: hasActiveSubscription()
+    hasActiveSubscription: hasActiveSubscription
   };
 
   return permissions;

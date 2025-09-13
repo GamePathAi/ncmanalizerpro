@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const { createClient } = require('@supabase/supabase-js');
+import jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
 
 // Configuração do Supabase
 const supabase = createClient(
@@ -319,7 +319,90 @@ const auditLog = (action) => {
   };
 };
 
-module.exports = {
+/**
+ * Middleware que verifica subscription_status e redireciona baseado no estado
+ */
+const checkSubscriptionStatus = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ 
+        error: 'Usuário não autenticado',
+        redirect: '/login'
+      });
+    }
+
+    // Buscar perfil do usuário com subscription_status
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('subscription_status, email_verified_at, stripe_customer_id')
+      .eq('id', req.user.id)
+      .single();
+
+    if (error || !profile) {
+      return res.status(404).json({ 
+        error: 'Perfil não encontrado',
+        redirect: '/login'
+      });
+    }
+
+    req.profile = profile;
+
+    // Verificar se a rota requer subscription ativa
+    const protectedRoutes = ['/api/dashboard', '/api/protected'];
+    const isProtectedRoute = protectedRoutes.some(route => req.path.startsWith(route));
+
+    if (isProtectedRoute) {
+      switch (profile.subscription_status) {
+        case 'pending_email':
+          return res.status(403).json({
+            error: 'Email não verificado',
+            subscription_status: 'pending_email',
+            redirect: '/verify-email'
+          });
+        
+        case 'pending_subscription':
+          return res.status(403).json({
+            error: 'Assinatura necessária',
+            subscription_status: 'pending_subscription',
+            redirect: '/pricing'
+          });
+        
+        case 'active':
+          // Usuário pode acessar
+          break;
+        
+        default:
+          return res.status(403).json({
+            error: 'Status de assinatura inválido',
+            redirect: '/login'
+          });
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('Erro ao verificar subscription_status:', error);
+    return res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      redirect: '/login'
+    });
+  }
+};
+
+/**
+ * Middleware combinado: verifica token + subscription_status
+ */
+const authWithSubscription = async (req, res, next) => {
+  // Primeiro verifica o token
+  await verifyToken(req, res, async (tokenError) => {
+    if (tokenError) return; // verifyToken já enviou a resposta
+    
+    // Depois verifica subscription_status
+    await checkSubscriptionStatus(req, res, next);
+  });
+};
+
+export {
   verifyToken,
   requireEmailVerified,
   requireActiveSubscription,
@@ -328,5 +411,7 @@ module.exports = {
   authMiddleware,
   optionalAuth,
   createUserRateLimit,
-  auditLog
+  auditLog,
+  checkSubscriptionStatus,
+  authWithSubscription
 };

@@ -44,166 +44,176 @@ const EmailVerificationPage = () => {
     setMessage('');
 
     try {
-      const result = await verifyEmail(token);
+      // Usar Edge Function para verificar email
+      const { supabase } = await import('../lib/supabase');
+      const functionsUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       
-      if (result.success) {
+      const response = await fetch(`${functionsUrl}/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
         setMessage('Email verificado com sucesso! Redirecionando...');
         
-        // Aguardar um pouco e verificar status
-        setTimeout(async () => {
-          await checkAuthStatus();
+        // Atualizar contexto de autenticação
+        await checkAuthStatus();
+        
+        // Redirecionar após 2 segundos
+        setTimeout(() => {
           navigate('/pricing');
         }, 2000);
       } else {
         setError(result.error || 'Erro ao verificar email');
       }
-    } catch (err) {
-      setError('Erro inesperado ao verificar email');
+    } catch (error) {
+      console.error('Erro ao verificar email:', error);
+      setError('Erro ao verificar email. Tente novamente.');
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handleResendEmail = async () => {
-    if (!user?.email || resendCooldown > 0) return;
-
+    if (!user || resendCooldown > 0) return;
+    
     setIsResending(true);
     setError('');
     setMessage('');
 
     try {
-      const result = await resendVerification(user.email);
+      // Usar Edge Function para reenviar email
+      const functionsUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       
-      if (result.success) {
-        setMessage('Email de verificação reenviado! Verifique sua caixa de entrada.');
+      const response = await fetch(`${functionsUrl}/send-confirmation-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: user.email,
+          userId: user.id,
+          type: 'email_verification'
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setMessage('Email de verificação reenviado com sucesso!');
         setResendCooldown(60); // 60 segundos de cooldown
       } else {
         setError(result.error || 'Erro ao reenviar email');
       }
-    } catch (err) {
-      setError('Erro inesperado ao reenviar email');
+    } catch (error) {
+      console.error('Erro ao reenviar email:', error);
+      setError('Erro ao reenviar email. Tente novamente.');
     } finally {
       setIsResending(false);
     }
   };
 
-  if (isVerifying) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificando email...</h2>
-          <p className="text-gray-600">Aguarde enquanto confirmamos seu email.</p>
-        </div>
-      </div>
-    );
+  // Se não há usuário, redirecionar para login
+  if (!user) {
+    navigate('/login');
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Mail className="w-8 h-8 text-blue-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Confirme seu email
-          </h1>
-          <p className="text-gray-600">
-            Enviamos um link de confirmação para
-          </p>
-          <p className="font-semibold text-gray-900 mt-1">
-            {user?.email}
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="text-center">
+          <Mail className="mx-auto h-12 w-12 text-blue-600" />
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Verifique seu email
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Enviamos um link de verificação para <strong>{user?.email}</strong>
           </p>
         </div>
+      </div>
 
-        {/* Messages */}
-        {message && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-            <p className="text-green-800 text-sm">{message}</p>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {/* Mensagens */}
+          {message && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+              <div className="flex">
+                <CheckCircle className="h-5 w-5 text-green-400" />
+                <div className="ml-3">
+                  <p className="text-sm text-green-800">{message}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+                <div className="ml-3">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Instruções */}
+          <div className="text-center mb-6">
+            <p className="text-sm text-gray-600 mb-4">
+              Clique no link que enviamos para seu email para verificar sua conta.
+            </p>
+            <p className="text-xs text-gray-500">
+              Não recebeu o email? Verifique sua pasta de spam ou clique no botão abaixo para reenviar.
+            </p>
           </div>
-        )}
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Instructions */}
-        <div className="mb-8">
-          <h3 className="font-semibold text-gray-900 mb-3">O que fazer agora:</h3>
-          <ol className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-start">
-              <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5 flex-shrink-0">
-                1
-              </span>
-              Verifique sua caixa de entrada
-            </li>
-            <li className="flex items-start">
-              <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5 flex-shrink-0">
-                2
-              </span>
-              Clique no link de confirmação
-            </li>
-            <li className="flex items-start">
-              <span className="bg-blue-100 text-blue-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5 flex-shrink-0">
-                3
-              </span>
-              Volte aqui para continuar
-            </li>
-          </ol>
-        </div>
-
-        {/* Resend Button */}
-        <div className="space-y-4">
-          <button
-            onClick={handleResendEmail}
-            disabled={isResending || resendCooldown > 0}
-            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isResending ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                Reenviando...
-              </>
-            ) : resendCooldown > 0 ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reenviar em {resendCooldown}s
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reenviar email
-              </>
-            )}
-          </button>
-
+          {/* Botão de reenvio */}
           <div className="text-center">
             <button
+              onClick={handleResendEmail}
+              disabled={isResending || resendCooldown > 0}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isResending ? (
+                <>
+                  <RefreshCw className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                  Reenviando...
+                </>
+              ) : resendCooldown > 0 ? (
+                `Aguarde ${resendCooldown}s`
+              ) : (
+                <>
+                  <RefreshCw className="-ml-1 mr-2 h-4 w-4" />
+                  Reenviar email
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Loading de verificação */}
+          {isVerifying && (
+            <div className="mt-6 text-center">
+              <div className="inline-flex items-center">
+                <RefreshCw className="animate-spin h-5 w-5 text-blue-600 mr-2" />
+                <span className="text-sm text-gray-600">Verificando email...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Link para voltar */}
+          <div className="mt-6 text-center">
+            <button
               onClick={() => navigate('/login')}
-              className="text-sm text-blue-600 hover:text-blue-500 font-medium"
+              className="text-sm text-blue-600 hover:text-blue-500"
             >
               Voltar ao login
             </button>
-          </div>
-        </div>
-
-        {/* Help */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-2">
-              Não recebeu o email?
-            </p>
-            <ul className="text-xs text-gray-500 space-y-1">
-              <li>• Verifique a pasta de spam</li>
-              <li>• Aguarde alguns minutos</li>
-              <li>• Verifique se o email está correto</li>
-            </ul>
           </div>
         </div>
       </div>

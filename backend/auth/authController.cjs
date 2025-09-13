@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { Resend } = require('resend');
-const { emailVerificationTemplate, passwordResetTemplate, welcomeTemplate } = require('../templates/emailTemplates');
+const { emailVerificationTemplate, passwordResetTemplate, welcomeTemplate } = require('../templates/emailTemplates.cjs');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Configuração do Supabase
@@ -84,7 +84,7 @@ async function sendVerificationEmail(userId, email, token, userName = 'Usuário'
     // Para desenvolvimento, usar email do desenvolvedor se não for o email autorizado
     const isDevelopment = process.env.NODE_ENV !== 'production';
     const authorizedEmail = 'gamepathai@gmail.com';
-    const recipientEmail = isDevelopment && email !== authorizedEmail ? authorizedEmail : email;
+    const recipientEmail = email; // Temporariamente desabilitando redirect para teste
     
     // Gerar HTML do template
     const htmlContent = emailVerificationTemplate({

@@ -1,14 +1,35 @@
 // Servidor Express para o sistema de autenticação NCM PRO
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+// const analysisRoutes = await import('./src/routes/analysis.js').then(m => m.default || m);
 
-// Importar rotas
-const authRoutes = require('./src/routes/auth');
-const stripeRoutes = require('./src/routes/stripe');
-const webhookRoutes = require('./src/routes/webhook');
+// Configurar dotenv
+dotenv.config();
+
+// Obter __dirname em ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Importar rotas do backend (CommonJS usando import dinâmico)
+const { createRequire } = await import('module');
+const require = createRequire(import.meta.url);
+
+const authController = require('./backend/auth/authController.cjs');
+const stripeRoutes = require('./backend/routes/stripeRoutes.cjs');
+const webhookRoutes = require('./backend/webhooks/stripeWebhook.cjs');
+
+// Criar router para autenticação
+const authRoutes = express.Router();
+authRoutes.post('/register', authController.register);
+authRoutes.post('/verify-email', authController.verifyEmail);
+authRoutes.post('/login', authController.login);
+authRoutes.post('/resend-verification', authController.resendVerification);
+authRoutes.get('/me', authController.getMe);
+authRoutes.post('/logout', authController.logout);
 
 // Configurar Supabase
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -16,7 +37,7 @@ const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_A
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 // Middleware para webhooks (deve vir antes do express.json())
 // O webhook do Stripe precisa do raw body
@@ -25,7 +46,7 @@ app.use('/api/webhook', webhookRoutes);
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, 'https://ncmpro.com', 'https://www.ncmpro.com']
+    ? [process.env.FRONTEND_URL, 'https://ncmanalyzerpro.com.br', 'https://www.ncmanalyzerpro.com.br']
     : ['http://localhost:3000', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -47,6 +68,7 @@ app.locals.supabase = supabase;
 // Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/stripe', stripeRoutes);
+// app.use('/api/analysis', analysisRoutes);
 
 // Rota de saúde
 app.get('/api/health', (req, res) => {
@@ -176,4 +198,4 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-module.exports = app;
+export default app;

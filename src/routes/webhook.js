@@ -1,8 +1,9 @@
-const express = require('express');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { createClient } = require('@supabase/supabase-js');
-const crypto = require('crypto');
+import express from 'express';
+import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const router = express.Router();
 
 // Configuração do Supabase
@@ -464,4 +465,4 @@ router.post('/test-stripe', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

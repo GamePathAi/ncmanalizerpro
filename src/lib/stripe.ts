@@ -36,69 +36,48 @@ export const STRIPE_PRICES = {
 // Configuração dos planos
 export const PRICING_PLANS = [
   {
-    id: 'basic',
-    name: 'Básico',
-    description: 'Ideal para pequenas empresas',
-    monthlyPrice: 79.90,
-    yearlyPrice: 699.90,
-    stripePriceIdMonthly: STRIPE_PRICES.BASIC_MONTHLY,
-    stripePriceIdYearly: STRIPE_PRICES.BASIC_YEARLY,
-    features: [
-      'Até 1.000 consultas NCM/mês',
-      'Classificação automática',
-      'Relatórios básicos',
-      'Suporte por email',
-      'API básica'
-    ],
-    limitations: [
-      'Sem análise de tendências',
-      'Sem exportação em lote'
-    ],
-    popular: false
-  },
-  {
-    id: 'pro',
-    name: 'Profissional',
+    id: 'monthly',
+    name: 'Plano Mensal',
     description: 'Para empresas em crescimento',
     monthlyPrice: 79.90,
-    yearlyPrice: 799.00,
+    yearlyPrice: 699.90,
     stripePriceIdMonthly: STRIPE_PRICES.PRO_MONTHLY,
     stripePriceIdYearly: STRIPE_PRICES.PRO_YEARLY,
     features: [
-      'Até 10.000 consultas NCM/mês',
+      'NCMs ilimitados',
       'Classificação automática avançada',
-      'Análise de tendências',
-      'Relatórios detalhados',
-      'Exportação em lote',
+      'Relatórios avançados',
       'Suporte prioritário',
       'API completa',
-      'Integração com ERPs'
-    ],
-    limitations: [],
-    popular: true
-  },
-  {
-    id: 'enterprise',
-    name: 'Empresarial',
-    description: 'Para grandes corporações',
-    monthlyPrice: 199.90,
-    yearlyPrice: 1999.00,
-    stripePriceIdMonthly: STRIPE_PRICES.ENTERPRISE_MONTHLY,
-    stripePriceIdYearly: STRIPE_PRICES.ENTERPRISE_YEARLY,
-    features: [
-      'Consultas NCM ilimitadas',
-      'IA personalizada para seu negócio',
-      'Análise preditiva avançada',
-      'Dashboard executivo',
-      'Relatórios customizados',
-      'Suporte 24/7 dedicado',
-      'API enterprise',
-      'Integração completa',
-      'Treinamento da equipe',
-      'SLA garantido'
+      'Integração com ERPs',
+      'Histórico completo',
+      'Exportação de dados'
     ],
     limitations: [],
     popular: false
+  },
+  {
+    id: 'yearly',
+    name: 'Plano Anual',
+    description: 'Melhor custo-benefício',
+    monthlyPrice: 79.90,
+    yearlyPrice: 699.90,
+    stripePriceIdMonthly: STRIPE_PRICES.PRO_MONTHLY,
+    stripePriceIdYearly: STRIPE_PRICES.PRO_YEARLY,
+    features: [
+      'Tudo do plano mensal',
+      'Economia de R$ 258,90 por ano',
+      'NCMs ilimitados',
+      'Classificação automática avançada',
+      'Relatórios avançados',
+      'Suporte prioritário',
+      'API completa',
+      'Integração com ERPs',
+      'Histórico completo',
+      'Exportação de dados'
+    ],
+    limitations: [],
+    popular: true
   }
 ]
 

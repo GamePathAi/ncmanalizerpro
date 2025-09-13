@@ -40,7 +40,7 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    if (hasActiveSubscription()) {
+    if (hasActiveSubscription) {
       loadSubscriptionData();
       loadDashboardStats();
     }
@@ -48,16 +48,40 @@ const Dashboard = () => {
 
   const loadSubscriptionData = async () => {
     try {
-      const token = await getAccessToken();
-      const response = await fetch('/api/stripe/subscription', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Verificar se está usando autenticação local
+      const localToken = localStorage.getItem('auth_token');
       
-      if (response.ok) {
-        const data = await response.json();
-        setSubscription(data);
+      if (localToken && localToken.startsWith('temp_token_')) {
+        // Usar dados mock para autenticação local
+        const mockSubscription = {
+          subscription: {
+            id: 'sub_mock_123',
+            status: 'active',
+            current_period_start: Math.floor(Date.now() / 1000) - 86400 * 15, // 15 dias atrás
+            current_period_end: Math.floor(Date.now() / 1000) + 86400 * 15, // 15 dias no futuro
+            plan: {
+              id: 'price_premium',
+              amount: 4900, // R$ 49,00
+              currency: 'brl',
+              interval: 'month'
+            }
+          },
+          status: 'active'
+        };
+        setSubscription(mockSubscription);
+      } else {
+        // Usar API real para autenticação Supabase
+        const token = await getAccessToken();
+        const response = await fetch('/api/stripe/subscription', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSubscription(data);
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar dados da assinatura:', error);

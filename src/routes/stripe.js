@@ -1,8 +1,10 @@
-const express = require('express');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { verifyToken, requireEmailVerified } = require('../middleware/auth');
-const { supabase } = require('../config/supabase');
-const { sendSubscriptionConfirmationEmail, sendSubscriptionCancelledEmail } = require('../services/emailService');
+import express from 'express';
+import Stripe from 'stripe';
+import { verifyToken, requireEmailVerified } from '../middleware/auth.js';
+import { supabase } from '../config/supabase.js';
+import { sendSubscriptionConfirmationEmail, sendSubscriptionCancelledEmail } from '../services/emailService.js';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const router = express.Router();
 
 // Validar configuração do Stripe
@@ -524,4 +526,4 @@ async function handlePaymentFailed(invoice) {
   }
 }
 
-module.exports = router;
+export default router;

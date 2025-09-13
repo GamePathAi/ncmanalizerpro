@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { supabase, getCurrentUser, signUp as supabaseSignUp, signIn as supabaseSignIn } from '../lib/supabase'
+import { supabase, getCurrentUser } from '../lib/supabase'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const isDevelopment = import.meta.env.MODE === 'development';
+const endpoint = isDevelopment ? 'http://localhost:54321/functions/v1/auth-endpoints' : `${supabaseUrl}/functions/v1/auth-endpoints`;
 import type { UserProfile } from '../types'
 import { totpService } from '../lib/totp'
 import { useUserState, type UserState as UserStateType } from '../hooks/useUserState'
@@ -118,66 +122,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
-    try {
-      const result = await supabaseSignUp(email, password, fullName)
-      return result
-    } catch (error) {
-      console.error('Erro no cadastro:', error)
-      throw error
-    }
-  }
-
+  const signUp = async (email: string, password: string, fullName?: string) =&gt; {\n    try {\n      const registerEndpoint = 'http://localhost:3000/api/auth/register';\n      const data = { email, password, fullName };\n      console.log('Sending registration request to:', registerEndpoint);\n      console.log('Registration data:', data);\n      const response = await fetch(registerEndpoint, {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify(data),\n      });\n      console.log('Registration response status:', response.status);\n      if (!response.ok) {\n        const errorData = await response.json();\n        console.error('Registration error data:', errorData);\n        throw new Error(errorData.error || 'Erro ao cadastrar');\n      }\n      const result = await response.json();\n      console.log('Registration result:', result);\n      return { user: result.user, error: null };\n    } catch (error) {\n      console.error('Erro no cadastro:', error)\n      throw error\n    }\n  }\n
   const signIn = async (email: string, password: string, totpCode?: string) => {
     try {
-      const result = await supabaseSignIn(email, password)
-      
-      // Se login básico foi bem-sucedido, verificar perfil do usuário
-      if (result.user && !result.error) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('totp_enabled, subscription_status, subscription_type')
-          .eq('id', result.user.id)
-          .single()
-        
-        // Verificar se o email foi confirmado
-        if (!result.user.email_confirmed_at) {
-          await supabase.auth.signOut()
-          return { 
-            user: null, 
-            error: { 
-              message: 'EMAIL_NOT_CONFIRMED', 
-              requiresEmailConfirmation: true,
-              details: 'Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada.'
-            }
-          }
-        }
-        
-        // Se TOTP está habilitado mas código não foi fornecido
-        if (profile?.totp_enabled && !totpCode) {
-          // Fazer logout temporário
-          await supabase.auth.signOut()
-          return { 
-            user: null, 
-            error: { message: 'TOTP_REQUIRED', requiresTOTP: true }
-          }
-        }
-        
-        // Se TOTP está habilitado e código foi fornecido, validar
-        if (profile?.totp_enabled && totpCode) {
-          const totpValidation = await validateTOTP(totpCode)
-          if (!totpValidation.success) {
-            // Fazer logout se TOTP inválido
-            await supabase.auth.signOut()
-            return { 
-              user: null, 
-              error: { message: 'Código TOTP inválido' }
-            }
-          }
-        }
+      const data = { method: 'login', email, password };
+      console.log('Sending login request to:', endpoint);
+      console.log('Login data:', data);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      console.log('Login response status:', response.status);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Login error data:', errorData);
+        throw new Error(errorData.error || 'Erro ao logar');
       }
-      
-      return result
+      const result = await response.json();
+      console.log('Login result:', result);
+      // Configurar sessão no Supabase se necessário
+      if (result.session) {
+        await supabase.auth.setSession(result.session);
+      }
+      return { user: result.user, error: null, state: result.state };
     } catch (error) {
       console.error('Erro no login:', error)
       throw error
@@ -359,15 +327,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
+    let isMounted = true
+    
     // Verificar usuário atual
     const checkCurrentUser = async () => {
       try {
         const currentUser = await getCurrentUser()
-        setUser(currentUser)
-        setLoading(false)
+        if (isMounted) {
+          setUser(currentUser)
+          setLoading(false)
+        }
       } catch (error) {
         console.error('Erro ao verificar usuário atual:', error)
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -375,12 +349,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-      
-      if (event === 'SIGNED_OUT') {
-        setUserProfile(null)
-        setIsSubscribed(false)
+      if (isMounted) {
+        setUser(session?.user ?? null)
+        setLoading(false)
+        
+        if (event === 'SIGNED_OUT') {
+          setUserProfile(null)
+          setIsSubscribed(false)
+        }
       }
     })
 
@@ -405,7 +381,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'email-confirmation' } }))
     }
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -417,7 +396,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     userProfile,
-    loading: loading || userStateLoading,
+    loading: loading,
     isSubscribed,
     userState,
     // Novos campos do sistema de estados

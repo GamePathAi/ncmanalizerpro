@@ -1,13 +1,12 @@
-import { useState } from 'react';
-import { Check, Star, TrendingUp, Shield, Clock, Users, ArrowRight, Calculator, Award, Mail, LogIn } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
-import AuthForm from './components/Auth/AuthForm';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, Menu, X, Check, Star, ArrowRight, Shield, Zap, BarChart3, FileText, Users, TrendingUp, Calculator, Clock, Award, LogIn, Mail } from 'lucide-react';
 
 const LandingPage = () => {
-  const [selectedPlan, setSelectedPlan] = useState('anual');
-  const [showAuthForm, setShowAuthForm] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [selectedPlan, setSelectedPlan] = useState('mensal');
   const { user } = useAuth();
+  const navigate = useNavigate();
   // Form data state removed as it's not currently used
 
   // Funções removidas pois não estão sendo utilizadas
@@ -31,7 +30,7 @@ const LandingPage = () => {
               </nav>
               {!user ? (
                 <button
-                  onClick={() => setShowAuthForm(true)}
+                  onClick={() => navigate('/login')} // Alterado para redirecionar para /login
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
                 >
                   <LogIn className="h-4 w-4" />
@@ -41,7 +40,7 @@ const LandingPage = () => {
                 <div className="flex items-center gap-4">
                   <span className="text-gray-700">Olá, {user.email?.split('@')[0]}</span>
                   <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'dashboard' } }))}
+                    onClick={() => navigate('/dashboard')}
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                   >
                     Dashboard
@@ -215,12 +214,12 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {/* Plano Anual */}
             <div className={`relative p-8 rounded-2xl border-2 transition-all ${
-              selectedPlan === 'anual' ? 'border-blue-500 shadow-xl' : 'border-gray-200'
+              selectedPlan === 'mensal' ? 'border-blue-500 shadow-xl' : 'border-gray-200'
             }`}>
               <div className="text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Plano Anual</h3>
-                <div className="text-5xl font-bold text-blue-600 mb-2">R$ 247</div>
-                <div className="text-gray-600 mb-6">por ano</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Plano Mensal</h3>
+                <div className="text-5xl font-bold text-blue-600 mb-2">R$ 79,90</div>
+                <div className="text-gray-600 mb-6">por mês</div>
                 
                 <ul className="text-left space-y-3 mb-8">
                   <li className="flex items-center">
@@ -246,21 +245,21 @@ const LandingPage = () => {
                 </ul>
                 
                 <button 
-                  onClick={() => setSelectedPlan('anual')}
+                  onClick={() => setSelectedPlan('mensal')}
                   className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
-                    selectedPlan === 'anual' 
+                    selectedPlan === 'mensal' 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  Escolher Plano Anual
+                  Escolher Plano Mensal
                 </button>
               </div>
             </div>
             
-            {/* Plano Vitalício */}
+            {/* Plano Anual */}
             <div className={`relative p-8 rounded-2xl border-2 transition-all ${
-              selectedPlan === 'vitalicio' ? 'border-blue-500 shadow-xl' : 'border-gray-200'
+              selectedPlan === 'anual' ? 'border-blue-500 shadow-xl' : 'border-gray-200'
             }`}>
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
@@ -269,10 +268,10 @@ const LandingPage = () => {
               </div>
               
               <div className="text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Programa Vitalício</h3>
-                <div className="text-5xl font-bold text-blue-600 mb-2">R$ 1.997</div>
-                <div className="text-gray-600 mb-2">pagamento único</div>
-                <div className="text-sm text-green-600 font-semibold mb-6">Economia de R$ 1.473 vs anual</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Plano Anual</h3>
+                <div className="text-5xl font-bold text-blue-600 mb-2">R$ 699,90</div>
+                <div className="text-gray-600 mb-2">por ano</div>
+                <div className="text-sm text-green-600 font-semibold mb-6">Economia de R$ 258,90 vs mensal</div>
                 
                 <ul className="text-left space-y-3 mb-8">
                   <li className="flex items-center">
@@ -302,20 +301,44 @@ const LandingPage = () => {
                 </ul>
                 
                 <button 
-                  onClick={() => setSelectedPlan('vitalicio')}
+                  onClick={() => setSelectedPlan('anual')}
                   className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
-                    selectedPlan === 'vitalicio' 
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white' 
+                    selectedPlan === 'anual' 
+                      ? 'bg-blue-600 text-white' 
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  Escolher Programa Vitalício
+                  Escolher Plano Anual
                 </button>
               </div>
             </div>
           </div>
           
-          <div className="text-center mt-12">
+          {/* Botão de Checkout Principal */}
+          {selectedPlan && (
+            <div className="text-center mt-12">
+              <button 
+                onClick={() => {
+                  if (user) {
+                    navigate('/pricing');
+                  } else {
+                    navigate('/login'); // Alterado para redirecionar para /login
+                  }
+                }}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-12 py-4 rounded-lg text-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 mb-8"
+              >
+                {user ? 'Finalizar Compra' : 'Criar Conta e Comprar'}
+                <ArrowRight className="ml-3 h-6 w-6 inline" />
+              </button>
+              <p className="text-sm text-gray-600 mb-2">
+                Plano selecionado: <span className="font-semibold text-blue-600">
+                  {selectedPlan === 'mensal' ? 'Plano Mensal (R$ 79,90/mês)' : 'Plano Anual (R$ 699,90/ano)'}
+                </span>
+              </p>
+            </div>
+          )}
+          
+          <div className="text-center mt-8">
             <p className="text-gray-600 mb-4">💳 Aceitamos PIX, cartão de crédito e boleto bancário</p>
             <p className="text-sm text-gray-500">Garantia de 30 dias ou seu dinheiro de volta</p>
           </div>
@@ -482,40 +505,6 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* Modal de Autenticação */}
-      {showAuthForm && (
-        <div className="fixed inset-0 bg-gradient-to-br from-black/80 via-slate-900/90 to-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-slate-950 border-2 border-orange-500/30 rounded-2xl max-w-lg w-full max-h-[95vh] overflow-y-auto shadow-2xl shadow-orange-500/10">
-            <div className="p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="bg-gradient-to-r from-orange-500 to-red-500 p-2 rounded-xl">
-                    <LogIn className="text-white" size={24} />
-                  </div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
-                    {authMode === 'login' ? 'Entrar' : 'Criar Conta'}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setShowAuthForm(false)}
-                  className="text-gray-400 hover:text-orange-400 text-3xl font-bold transition-colors duration-200 hover:bg-slate-800/50 rounded-lg p-2"
-                >
-                  ×
-                </button>
-              </div>
-              <AuthForm
-                mode={authMode}
-                onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                onSuccess={() => {
-                  setShowAuthForm(false);
-                  // Redirecionar para dashboard ou página apropriada
-                  window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'dashboard' } }));
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

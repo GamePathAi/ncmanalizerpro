@@ -20,28 +20,12 @@ interface PricingPlan {
 
 const pricingPlans: PricingPlan[] = [
   {
-    id: 'basic-monthly',
-    name: 'Básico',
-    price: 29.90,
-    interval: 'month',
-    stripePriceId: 'price_1S6Cqx0qhrqQ3Ot3vizSWOnH', // Novo Price ID recorrente
-    description: 'Ideal para pequenas empresas',
-    features: [
-      'Até 100 NCMs por mês',
-      'Classificação automática',
-      'Suporte por email',
-      'Relatórios básicos',
-      'API básica'
-    ]
-  },
-  {
     id: 'pro-monthly',
-    name: 'Profissional',
+    name: 'Plano Mensal',
     price: 79.90,
     interval: 'month',
     stripePriceId: 'price_1S6Cqy0qhrqQ3Ot3Nt5nwkKR', // Novo Price ID recorrente
     description: 'Para empresas em crescimento',
-    popular: true,
     features: [
       'NCMs ilimitados',
       'Classificação automática avançada',
@@ -54,21 +38,22 @@ const pricingPlans: PricingPlan[] = [
     ]
   },
   {
-    id: 'enterprise-monthly',
-    name: 'Enterprise',
-    price: 199.90,
-    interval: 'month',
-    stripePriceId: 'price_1S6Cqz0qhrqQ3Ot3oV3Y21wP', // Novo Price ID recorrente
-    description: 'Para grandes empresas',
+    id: 'pro-yearly',
+    name: 'Plano Anual',
+    price: 699.90,
+    interval: 'year',
+    stripePriceId: 'price_1S6Cqz0qhrqQ3Ot3oV3Y21wP', // Price ID para plano anual
+    description: 'Melhor custo-benefício',
+    popular: true,
     features: [
-      'Tudo do plano Profissional',
-      'Suporte 24/7',
-      'Gerente de conta dedicado',
-      'Treinamento personalizado',
-      'SLA garantido',
-      'Integração customizada',
-      'Relatórios personalizados',
-      'Auditoria e compliance'
+      'Tudo do plano mensal',
+      'Economia de R$ 258,90 por ano',
+      'Suporte prioritário',
+      'Relatórios avançados',
+      'API completa',
+      'Integração com ERPs',
+      'Histórico completo',
+      'Exportação de dados'
     ]
   }
 ]

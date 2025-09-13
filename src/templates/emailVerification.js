@@ -290,11 +290,10 @@ export const emailVerificationTemplate = (verificationUrl, userEmail) => {
     </div>
 </body>
 </html>
-  `;
-};
+  ` } }
 
 // Template de email para reenvio de verificação
-const resendVerificationTemplate = (verificationLink, userName = 'Usuário') => {
+export const resendVerificationTemplate = (verificationLink, userName = 'Usuário') => {
   return `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -506,9 +505,4 @@ const resendVerificationTemplate = (verificationLink, userName = 'Usuário') => 
 </body>
 </html>
   `;
-};
-
-module.exports = {
-  emailVerificationTemplate,
-  resendVerificationTemplate
 };

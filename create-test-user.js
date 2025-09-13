@@ -49,7 +49,7 @@ async function createTestUser() {
           subscription_status: 'active',
           subscription_type: 'annual',
           subscription_start_date: new Date().toISOString(),
-          customer_id: 'cus_test_' + Date.now(),
+          stripe_customer_id: 'cus_test_' + Date.now(),
           subscription_id: 'sub_test_' + Date.now(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

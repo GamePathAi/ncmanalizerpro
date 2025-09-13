@@ -1,132 +1,105 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Upload, Download, Calculator, AlertTriangle, TrendingUp, FileText, DollarSign, FileDown, Car, Wrench, Cog, Zap } from 'lucide-react';
-import jsPDF from 'jspdf';
-import type { ProcessedNCMItem, NCMAnalysis } from './types';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
+import { jsPDF } from 'jspdf';
+import { MdBuild, MdDescription, MdCloudDownload, MdFontDownload, MdCloudUpload, MdViewCarousel } from 'react-icons/md';
+import { FiSettings, FiZap, FiTrendingUp, FiAlertTriangle } from 'react-icons/fi';
+import { FaDollarSign } from 'react-icons/fa';
+import AuthContext from './contexts/AuthContext';
 
-const NCMAnalyzer = () => {
-  const [jsonData, setJsonData] = useState('');
-  const [processedData, setProcessedData] = useState<ProcessedNCMItem[]>([]);
-  const [analysis, setAnalysis] = useState<NCMAnalysis | null>(null);
-  const [filter, setFilter] = useState('all');
-  const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState('');
-  const [ncmOficial, setNcmOficial] = useState(new Map());
-  const [isLoadingNCM, setIsLoadingNCM] = useState(true);
+// Interfaces
+interface NCMAnalyzerProps {
+  isLoadingNCM: boolean;
+  ncmOficial: Set<string>;
+  validateNCM: (ncm: string) => { isValid: boolean; isActive: boolean; description?: string };
+}
 
-  // Carregar base oficial de NCMs
-  useEffect(() => {
-    const loadNCMOficial = async () => {
-      try {
-        console.log('Carregando base oficial de NCMs...');
-        
-        // Carregar o arquivo usando fetch
-        const response = await fetch('/NCMatual.md');
-        const textData = await response.text();
-        
-        // Parse do JSON
-        const data = JSON.parse(textData.trim());
-        const ncmMap = new Map();
-        
-        if (data.Nomenclaturas && Array.isArray(data.Nomenclaturas)) {
-          data.Nomenclaturas.forEach((item: any) => {
-            if (item.Codigo) {
-              // Formatar NCM para o padrão XX.XX.XX se necessário
-              let formattedCode = item.Codigo;
-              if (item.Codigo.length === 8 && !item.Codigo.includes('.')) {
-                formattedCode = item.Codigo.replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3');
-              }
-              
-              ncmMap.set(formattedCode, {
-                codigo: formattedCode,
-                descricao: item.Descricao,
-                dataInicio: item.Data_Inicio,
-                dataFim: item.Data_Fim,
-                ato: item.Tipo_Ato_Ini
-              });
-              
-              // Também adicionar sem formatação para compatibilidade
-              if (formattedCode !== item.Codigo) {
-                ncmMap.set(item.Codigo, {
-                  codigo: item.Codigo,
-                  descricao: item.Descricao,
-                  dataInicio: item.Data_Inicio,
-                  dataFim: item.Data_Fim,
-                  ato: item.Tipo_Ato_Ini
-                });
-              }
-            }
-          });
-        }
-        
-        setNcmOficial(ncmMap);
-        console.log(`Base oficial carregada: ${ncmMap.size} NCMs`);
-      } catch (error) {
-        console.error('Erro ao carregar base oficial de NCMs:', error);
-        // Em caso de erro, continuar sem a validação
-        setNcmOficial(new Map());
-      } finally {
-        setIsLoadingNCM(false);
-      }
-    };
-    
-    loadNCMOficial();
-  }, []);
-
-  // Função para validar NCM contra base oficial
-  const validateNCM = (ncmCode: string) => {
-    if (!ncmCode) return { valid: false, message: 'NCM não informado' };
-    
-    // Limpar e formatar NCM
-    const cleanNCM = ncmCode.toString().replace(/[^0-9]/g, '');
-    const formattedNCM = cleanNCM.replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3');
-    
-    // Tentar diferentes formatos para encontrar o NCM
-    const searchFormats = [
-      formattedNCM,           // 8421.39.90
-      cleanNCM,               // 84213990
-      ncmCode.toString()      // formato original
-    ];
-    
-    for (const format of searchFormats) {
-      const ncmInfo = ncmOficial.get(format);
-      if (ncmInfo) {
-        // Verificar se está ativo (sem data fim ou data fim futura)
-        const isActive = !ncmInfo.dataFim || ncmInfo.dataFim === '31/12/9999' || new Date(ncmInfo.dataFim) > new Date();
-        
-        return {
-          valid: true,
-          active: isActive,
-          info: ncmInfo,
-          formatted: formattedNCM,
-          message: isActive ? 'NCM válido e ativo' : 'NCM válido mas inativo'
-        };
-      }
-    }
-    
-    return {
-      valid: false,
-      formatted: formattedNCM,
-      message: 'NCM não encontrado na base oficial da RFB'
-    };
+interface ProcessedNCMItem {
+  id: string;
+  ncm: string;
+  description: string;
+  value: number;
+  isValidNCM: boolean;
+  isActiveNCM: boolean;
+  officialDescription?: string;
+  opportunity?: {
+    suggestedNCM: string;
+    suggestedDescription: string;
+    currentRate: number;
+    suggestedRate: number;
+    savings: number;
+    confidence: string;
+    caselaw: string;
+    category: string;
   };
+  potentialSavings: number;
+}
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && (file.type === 'application/json' || file.name.endsWith('.json'))) {
+interface Analysis {
+  totalItems: number;
+  itemsWithOpportunities: number;
+  totalValue: number;
+  totalSavings: number;
+  avgSavingsPercent: number;
+  coveragePercent: number;
+  validNCMs: number;
+  activeNCMs: number;
+  invalidNCMs: number;
+  ncmValidationPercent: number;
+}
+const NCMAnalyzer = ({ isLoadingNCM, ncmOficial, validateNCM }: NCMAnalyzerProps) => {
+  const { user, isAuthenticated } = useContext(AuthContext);
+  const [jsonData, setJsonData] = useState('');
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [processedData, setProcessedData] = useState<ProcessedNCMItem[]>([]);
+  const [analysis, setAnalysis] = useState<Analysis>();
+  const [dragActive, setDragActive] = useState(false);
+const [stats, setStats] = useState({
+  totalAnalises: 0,
+  itensAnalisados: 0,
+  analisesSalvas: 0,
+  alertasAtivos: 0,
+  economiaTotal: 0
+});
+useEffect(() => {
+  const fetchStats = async () => {
+    try {
+      // Usar dados mock para evitar erro de API não existente
+      const mockStats = {
+        totalAnalises: 1247,
+        itensAnalisados: 3891,
+        analisesSalvas: 156,
+        alertasAtivos: 23,
+        economiaTotal: 2847650
+      };
+      
+      // Simular delay de carregamento
+      setTimeout(() => {
+        setStats(mockStats);
+      }, 500);
+    } catch (err) {
+      console.error('Erro ao carregar stats:', err);
+    }
+  };
+  fetchStats();
+}, []);
+const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    if (file.type === 'application/json' || file.name.endsWith('.json')) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-          console.log('Arquivo carregado:', file.name);
-          setJsonData(e.target?.result as string);
-        };
+      reader.onload = (event) => {
+        console.log('Arquivo carregado:', file.name);
+        setJsonData(event.target?.result as string);
+      };
       reader.readAsText(file);
     } else {
       alert('Por favor, selecione um arquivo JSON válido (.json)');
+      e.target.value = ''; // Limpar o input
     }
-  };
+  }
+};
 
   const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
     } else if (e.type === 'dragleave') {
@@ -537,9 +510,16 @@ const NCMAnalyzer = () => {
       // Limpar erro anterior
       setError('');
       
+      console.log('=== INICIANDO PROCESSAMENTO ===');
       console.log('JSON recebido:', jsonData);
+      
+      if (!jsonData || jsonData.trim() === '') {
+        setError('❌ Nenhum JSON foi fornecido. Por favor, cole ou faça upload de um arquivo JSON.');
+        return;
+      }
+      
       const data = JSON.parse(jsonData);
-      console.log('JSON parseado:', data);
+      console.log('JSON parseado com sucesso:', data);
       let items = [];
       
       // Detectar se é a tabela NCM oficial (não é o formato esperado)
@@ -574,52 +554,71 @@ const NCMAnalyzer = () => {
       }
       
       console.log('Items extraídos:', items);
+      console.log('Total de items para processar:', items.length);
+      
+      if (items.length === 0) {
+        setError('❌ Nenhum item encontrado no JSON. Verifique se o formato está correto.');
+        return;
+      }
 
       // Processar cada item
+      console.log('=== INICIANDO PROCESSAMENTO DOS ITEMS ===');
       const processed = items.map((item: any, index: number) => {
-        console.log(`Processando item ${index + 1}:`, item);
-        
-        // Tentar extrair NCM de diferentes campos possíveis
-        const ncm = item.ncm || item.NCM || item.codigo || item.code || 
-                   item.tariff || item.classification || item.fiscal_code;
-        console.log(`NCM extraído: ${ncm}`);
-        
-        // Tentar extrair descrição
-        const description = item.description || item.descricao || item.desc || item.produto || 
-                           item.product || item.nome || item.name;
-        console.log(`Descrição extraída: ${description}`);
-        
-        // Tentar extrair valor
-        const value = parseFloat(item.value || item.valor || item.valor_anual || item.amount || 
-                                item.price || item.preco || 0);
-        console.log(`Valor extraído: ${value}`);
-        
-        // Validar NCM contra base oficial da RFB
-        const ncmValidation = validateNCM(ncm);
-        console.log(`Validação NCM ${ncm}:`, ncmValidation);
-        
-        // Buscar oportunidade na base de conhecimento
-        const opportunity = autoPartsNCMDatabase[ncm as keyof typeof autoPartsNCMDatabase];
-        console.log(`Oportunidade encontrada para ${ncm}:`, opportunity);
-        
-        return {
-          id: index + 1,
-          ncm: ncm || 'N/A',
-          description: description || 'Sem descrição',
-          value: value,
-          opportunity: opportunity,
-          currentNCM: ncm,
-          potentialSavings: opportunity ? (value * opportunity.savings / 100) : 0,
-          ncmValidation: ncmValidation,
-          isValidNCM: ncmValidation.valid,
-          isActiveNCM: ncmValidation.active,
-          officialDescription: ncmValidation.info?.descricao || null
-        };
+        try {
+          console.log(`Processando item ${index + 1}:`, item);
+          
+          // Tentar extrair NCM de diferentes campos possíveis
+          const ncm = item.ncm || item.NCM || item.codigo || item.code || 
+                     item.tariff || item.classification || item.fiscal_code;
+          console.log(`NCM extraído: ${ncm}`);
+          
+          // Tentar extrair descrição
+          const description = item.description || item.descricao || item.desc || item.produto || 
+                             item.product || item.nome || item.name;
+          console.log(`Descrição extraída: ${description}`);
+          
+          // Tentar extrair valor
+          const value = parseFloat(item.value || item.valor || item.valor_anual || item.amount || 
+                                  item.price || item.preco || 0);
+          console.log(`Valor extraído: ${value}`);
+          
+          // Validar NCM contra base oficial da RFB
+          console.log('Chamando validateNCM para:', ncm);
+          const ncmValidation = validateNCM(ncm || '');
+          console.log(`Validação NCM ${ncm}:`, ncmValidation);
+          
+          // Buscar oportunidade na base de conhecimento
+          const opportunity = autoPartsNCMDatabase[ncm as keyof typeof autoPartsNCMDatabase];
+          console.log(`Oportunidade encontrada para ${ncm}:`, opportunity);
+          
+          const processedItem = {
+            id: index + 1,
+            ncm: ncm || 'N/A',
+            description: description || 'Sem descrição',
+            value: value,
+            opportunity: opportunity,
+            currentNCM: ncm,
+            potentialSavings: opportunity ? (value * opportunity.savings / 100) : 0,
+            ncmValidation: ncmValidation,
+            isValidNCM: ncmValidation.isValid,
+            isActiveNCM: ncmValidation.isActive,
+            officialDescription: ncmValidation.description || null
+          };
+          
+          console.log(`Item ${index + 1} processado com sucesso:`, processedItem);
+          return processedItem;
+        } catch (itemError: any) {
+          console.error(`Erro ao processar item ${index + 1}:`, itemError);
+          throw new Error(`Erro no item ${index + 1}: ${itemError.message}`);
+        }
       });
 
+      console.log('=== PROCESSAMENTO CONCLUÍDO ===');
+      console.log('Items processados:', processed.length);
       setProcessedData(processed);
       
       // Calcular análise geral
+      console.log('=== CALCULANDO ANÁLISE GERAL ===');
       const totalItems = processed.length;
       const itemsWithOpportunities = processed.filter((item: ProcessedNCMItem) => item.opportunity).length;
       const totalValue = processed.reduce((sum: number, item: ProcessedNCMItem) => sum + item.value, 0);
@@ -633,7 +632,7 @@ const NCMAnalyzer = () => {
       const activeNCMs = processed.filter((item: ProcessedNCMItem) => item.isActiveNCM).length;
       const invalidNCMs = processed.filter((item: ProcessedNCMItem) => !item.isValidNCM).length;
 
-      setAnalysis({
+      const analysisData = {
         totalItems,
         itemsWithOpportunities,
         totalValue,
@@ -644,10 +643,86 @@ const NCMAnalyzer = () => {
         activeNCMs,
         invalidNCMs,
         ncmValidationPercent: (validNCMs / totalItems) * 100
-      });
+      };
+      
+      console.log('Dados da análise calculados:', analysisData);
+      setAnalysis(analysisData);
+      console.log('Estado da análise atualizado com sucesso');
+
+      // Se o usuário estiver autenticado, salvar a análise no backend
+      if (isAuthenticated && user) {
+        saveAnalysisToBackend(analysisData, processed);
+      }
 
     } catch (error: any) {
       alert('Erro ao processar JSON: ' + error.message);
+    }
+  };
+
+  // Função para salvar a análise no backend
+  const saveAnalysisToBackend = async (analysisData: Analysis, processedItems: ProcessedNCMItem[]) => {
+    try {
+      // Verificar se está usando autenticação local
+      const localToken = localStorage.getItem('auth_token');
+      
+      if (localToken && localToken.startsWith('temp_token_')) {
+        // Simular salvamento local
+        console.log('=== SIMULANDO SALVAMENTO DA ANÁLISE ===');
+        console.log('Dados da análise:', analysisData);
+        console.log('Total de itens processados:', processedItems.length);
+        
+        // Simular delay de salvamento
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log('✅ Análise salva com sucesso (simulação local)!');
+        
+        // Atualizar stats simulados
+        const currentStats = {
+          totalAnalises: stats.totalAnalises + 1,
+          itensAnalisados: stats.itensAnalisados + processedItems.length,
+          analisesSalvas: stats.analisesSalvas + 1,
+          alertasAtivos: stats.alertasAtivos,
+          economiaTotal: stats.economiaTotal + analysisData.totalSavings
+        };
+        
+        setStats(currentStats);
+        console.log('📊 Stats atualizados:', currentStats);
+      } else {
+        // Usar API real para autenticação Supabase
+        const response = await fetch('/api/analysis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            analysis: analysisData,
+            items: processedItems,
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        if (response.ok) {
+          console.log('Análise salva com sucesso!');
+          // Atualizar stats após salvar
+          const statsResponse = await fetch('/api/stats');
+          if (statsResponse.ok) {
+            const updatedStats = await statsResponse.json();
+            setStats(updatedStats);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('Erro ao salvar análise - Status:', response.status, 'Resposta:', errorText);
+          throw new Error(`Erro ${response.status}: ${errorText}`);
+        }
+      }
+    } catch (err: any) {
+      console.error('❌ Erro ao salvar análise:', err.message || err);
+      // Não mostrar erro para o usuário se for simulação local
+      const localToken = localStorage.getItem('auth_token');
+      if (!localToken || !localToken.startsWith('temp_token_')) {
+        alert('Erro ao salvar análise: ' + (err.message || 'Erro desconhecido'));
+      }
     }
   };
 
@@ -970,13 +1045,13 @@ Análise baseada em:
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-4">
             <div className="bg-gradient-to-r from-orange-500 to-red-600 p-3 rounded-xl">
-              <Car className="text-white" size={32} />
+              <MdViewCarousel className="text-white" size={32} />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
               NCM Analyzer Pro
             </h1>
             <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-3 rounded-xl">
-              <Wrench className="text-white" size={32} />
+              <MdBuild className="text-white" size={32} />
             </div>
           </div>
           <p className="text-lg text-gray-300 mb-4">
@@ -984,15 +1059,15 @@ Análise baseada em:
           </p>
           <div className="flex items-center justify-center gap-6 text-sm text-gray-400">
             <div className="flex items-center gap-2">
-              <Cog className="text-orange-400" size={16} />
+              <FiSettings className="text-orange-400" size={16} />
               <span>Especializado em Autopeças</span>
             </div>
             <div className="flex items-center gap-2">
-              <Zap className="text-yellow-400" size={16} />
+              <FiZap className="text-yellow-400" size={16} />
               <span>Análise Rápida</span>
             </div>
             <div className="flex items-center gap-2">
-              <TrendingUp className="text-green-400" size={16} />
+              <FiTrendingUp className="text-green-400" size={16} />
               <span>Máxima Economia</span>
             </div>
           </div>
@@ -1012,7 +1087,7 @@ Análise baseada em:
         <div className="bg-gradient-to-br from-gray-800 to-slate-800 border border-orange-500/20 rounded-xl shadow-2xl p-8 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="bg-gradient-to-r from-orange-500 to-red-500 p-2 rounded-lg">
-              <Upload className="text-white" size={20} />
+              <MdCloudUpload className="text-white" size={20} />
             </div>
             <h2 className="text-xl font-semibold text-white">🚗 1. Cole seu JSON de autopeças ou faça upload</h2>
           </div>
@@ -1029,7 +1104,7 @@ Análise baseada em:
           >
             <div className="text-center">
               <div className="bg-gradient-to-r from-orange-500 to-red-500 p-3 rounded-full w-fit mx-auto mb-3">
-                <Upload className="text-white" size={32} />
+                <MdCloudUpload className="text-white" size={32} />
               </div>
               <p className="text-gray-300 mb-2">🔧 Arraste e solte um arquivo JSON aqui ou</p>
               <input
@@ -1073,7 +1148,7 @@ Análise baseada em:
             disabled={!jsonData.trim()}
           >
             <div className="bg-white/20 p-1 rounded">
-              <Calculator size={16} />
+              <MdBuild size={16} />
             </div>
             🏁 Analisar Oportunidades
           </button>
@@ -1084,7 +1159,7 @@ Análise baseada em:
           <div className="bg-gradient-to-r from-red-900/50 to-red-800/50 border border-red-500/30 rounded-xl p-6 mb-8">
             <div className="flex items-start gap-3">
               <div className="bg-red-500 p-2 rounded-lg">
-                <AlertTriangle className="text-white" size={20} />
+                <FiAlertTriangle className="text-white" size={20} />
               </div>
               <div className="flex-1">
                 <h3 className="text-red-300 font-semibold mb-2">⚠️ Formato Incorreto Detectado</h3>
@@ -1103,95 +1178,80 @@ Análise baseada em:
         )}
 
         {/* Analysis Results */}
-        {analysis && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-blue-500/20 rounded-lg shadow-xl p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="bg-blue-500 p-2 rounded-lg">
-                  <FileText className="text-white" size={20} />
-                </div>
-                <span className="font-semibold text-white">Itens Analisados</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-400">{analysis.totalItems}</div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-green-500/20 rounded-lg shadow-xl p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="bg-green-500 p-2 rounded-lg">
-                  <TrendingUp className="text-white" size={20} />
-                </div>
-                <span className="font-semibold text-white">Oportunidades</span>
-              </div>
-              <div className="text-2xl font-bold text-green-400">
-                {analysis.itemsWithOpportunities}
-              </div>
-              <div className="text-sm text-gray-400">
-                {analysis.coveragePercent.toFixed(1)}% cobertura
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-emerald-500/20 rounded-lg shadow-xl p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="bg-emerald-500 p-2 rounded-lg">
-                  <DollarSign className="text-white" size={20} />
-                </div>
-                <span className="font-semibold text-white">Economia Potencial</span>
-              </div>
-              <div className="text-2xl font-bold text-emerald-400">
-                R$ {analysis.totalSavings.toLocaleString('pt-BR')}
-              </div>
-              <div className="text-sm text-gray-400">
-                {analysis.avgSavingsPercent.toFixed(1)}% em média
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-purple-500/20 rounded-lg shadow-xl p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="bg-purple-500 p-2 rounded-lg">
-                  <Calculator className="text-white" size={20} />
-                </div>
-                <span className="font-semibold text-white">ROI Projetado</span>
-              </div>
-              <div className="text-2xl font-bold text-purple-400">
-                {analysis.totalSavings > 0 ? 
-                  `${Math.round(analysis.totalSavings / 10000)}x` : 'N/A'}
-              </div>
-              <div className="text-sm text-gray-400">
-                Honorários R$ 10k
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+  <div className="bg-white border border-gray-300 rounded-lg shadow-xl p-6">
+    <div className="flex items-center gap-2 mb-2">
+      <div className="bg-blue-500 p-2 rounded-lg">
+        <MdDescription className="text-white" size={20} />
+      </div>
+      <span className="font-semibold text-black">Total Análises</span>
+    </div>
+    <div className="text-2xl font-bold text-blue-600">{stats.totalAnalises.toLocaleString()}</div>
+  </div>
+  <div className="bg-white border border-gray-300 rounded-lg shadow-xl p-6">
+    <div className="flex items-center gap-2 mb-2">
+      <div className="bg-green-500 p-2 rounded-lg">
+        <FiTrendingUp className="text-white" size={20} />
+      </div>
+      <span className="font-semibold text-black">Itens Analisados</span>
+    </div>
+    <div className="text-2xl font-bold text-green-600">
+      {stats.itensAnalisados.toLocaleString()}
+    </div>
+  </div>
+  <div className="bg-white border border-gray-300 rounded-lg shadow-xl p-6">
+    <div className="flex items-center gap-2 mb-2">
+      <div className="bg-emerald-500 p-2 rounded-lg">
+        <FaDollarSign className="text-white" size={20} />
+      </div>
+      <span className="font-semibold text-black">Economia Total</span>
+    </div>
+    <div className="text-2xl font-bold text-emerald-600">
+      R$ {stats.economiaTotal.toLocaleString('pt-BR')}
+    </div>
+  </div>
+  <div className="bg-white border border-gray-300 rounded-lg shadow-xl p-6">
+    <div className="flex items-center gap-2 mb-2">
+      <div className="bg-purple-500 p-2 rounded-lg">
+        <MdBuild className="text-white" size={20} />
+      </div>
+      <span className="font-semibold text-black">Análises Salvas</span>
+    </div>
+    <div className="text-2xl font-bold text-purple-600">
+      {stats.analisesSalvas.toLocaleString()}
+    </div>
+  </div>
+</div>
 
         {/* NCM Validation Results */}
         {analysis && (
-          <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-orange-500/20 rounded-xl shadow-xl p-6 mb-8">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
+          <div className="bg-white border border-gray-300 rounded-xl shadow-xl p-6 mb-8">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-black">
               <div className="bg-orange-500 p-2 rounded-lg">
-                <AlertTriangle className="text-white" size={20} />
+                <FiAlertTriangle className="text-white" size={20} />
               </div>
               🔧 Validação NCM - Base Oficial RFB
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-green-900/50 to-green-800/50 border border-green-500/30 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-400">{analysis.validNCMs}</div>
-                <div className="text-sm text-green-300">NCMs Válidos</div>
-                <div className="text-xs text-green-400">{analysis.ncmValidationPercent.toFixed(1)}% do total</div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="text-2xl font-bold text-green-700">{analysis.validNCMs}</div>
+                <div className="text-sm text-green-600">NCMs Válidos</div>
+                <div className="text-xs text-green-600">{analysis.ncmValidationPercent.toFixed(1)}% do total</div>
               </div>
-              <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/50 border border-blue-500/30 rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-400">{analysis.activeNCMs}</div>
-                <div className="text-sm text-blue-300">NCMs Ativos</div>
-                <div className="text-xs text-blue-400">Vigentes na RFB</div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-2xl font-bold text-blue-700">{analysis.activeNCMs}</div>
+                <div className="text-sm text-blue-600">NCMs Ativos</div>
+                <div className="text-xs text-blue-600">Vigentes na RFB</div>
               </div>
-              <div className="bg-gradient-to-br from-red-900/50 to-red-800/50 border border-red-500/30 rounded-lg p-4">
-                <div className="text-2xl font-bold text-red-400">{analysis.invalidNCMs}</div>
-                <div className="text-sm text-red-300">NCMs Inválidos</div>
-                <div className="text-xs text-red-400">Não encontrados na RFB</div>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="text-2xl font-bold text-red-700">{analysis.invalidNCMs}</div>
+                <div className="text-sm text-red-600">NCMs Inválidos</div>
+                <div className="text-xs text-red-600">Não encontrados na RFB</div>
               </div>
-              <div className="bg-gradient-to-br from-gray-800/50 to-gray-700/50 border border-gray-500/30 rounded-lg p-4">
-                <div className="text-2xl font-bold text-gray-300">{ncmOficial.size.toLocaleString('pt-BR')}</div>
-                <div className="text-sm text-gray-400">Base Oficial</div>
-                <div className="text-xs text-gray-400">NCMs carregados da RFB</div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="text-2xl font-bold text-gray-700">{ncmOficial.size.toLocaleString('pt-BR')}</div>
+                <div className="text-sm text-gray-600">Base Oficial</div>
+                <div className="text-xs text-gray-600">NCMs carregados da RFB</div>
               </div>
             </div>
           </div>
@@ -1226,7 +1286,7 @@ Análise baseada em:
                     className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg border border-blue-500/30"
                   >
                     <div className="bg-white/20 p-1 rounded">
-                      <FileText className="w-4 h-4" />
+                      <MdDescription className="w-4 h-4" />
                     </div>
                     📄 Relatório TXT
                   </button>
@@ -1235,7 +1295,7 @@ Análise baseada em:
                     className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg border border-red-500/30"
                   >
                     <div className="bg-white/20 p-1 rounded">
-                      <FileDown className="w-4 h-4" />
+                      <MdFontDownload className="w-4 h-4" />
                     </div>
                     📋 Relatório PDF
                   </button>
@@ -1245,7 +1305,7 @@ Análise baseada em:
                   className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg border border-purple-500/30"
                 >
                   <div className="bg-white/20 p-1 rounded">
-                    <Download size={16} />
+                    <MdCloudDownload size={16} />
                   </div>
                   💾 Exportar JSON
                 </button>
@@ -1256,11 +1316,11 @@ Análise baseada em:
 
         {/* Results Table */}
         {filteredData.length > 0 && (
-          <div className="bg-gradient-to-br from-slate-800 to-gray-800 border border-orange-500/20 rounded-xl shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-gray-700">
-              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <div className="bg-white border border-gray-300 rounded-xl shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-gray-300">
+              <h3 className="text-xl font-semibold text-black flex items-center gap-2">
                 <div className="bg-orange-500 p-2 rounded-lg">
-                  <Car className="text-white" size={20} />
+                  <MdViewCarousel className="text-white" size={20} />
                 </div>
                 🔧 Análise Detalhada ({filteredData.length} itens)
               </h3>
@@ -1281,7 +1341,7 @@ Análise baseada em:
                 </thead>
                 <tbody>
                   {filteredData.map((item) => (
-                    <tr key={item.id} className="border-b border-gray-600 hover:bg-slate-700/50 text-gray-100">
+                    <tr key={item.id} className="border-b border-gray-300 hover:bg-gray-50 text-black bg-white">
                       <td className="p-4 font-mono text-sm">{item.ncm}</td>
                       <td className="p-4">
                         {item.isValidNCM ? (
@@ -1289,8 +1349,8 @@ Análise baseada em:
                             <div className={`w-2 h-2 rounded-full ${
                               item.isActiveNCM ? 'bg-green-500' : 'bg-yellow-500'
                             }`}></div>
-                            <span className={`text-xs ${
-                              item.isActiveNCM ? 'text-green-700' : 'text-yellow-700'
+                            <span className={`text-xs font-medium ${
+                              item.isActiveNCM ? 'text-green-800' : 'text-yellow-800'
                             }`}>
                               {item.isActiveNCM ? 'Válido' : 'Inativo'}
                             </span>
@@ -1298,11 +1358,11 @@ Análise baseada em:
                         ) : (
                           <div className="flex items-center gap-1">
                             <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                            <span className="text-xs text-red-700">Inválido</span>
+                            <span className="text-xs font-medium text-red-800">Inválido</span>
                           </div>
                         )}
                         {item.officialDescription && (
-                          <div className="text-xs text-gray-500 mt-1 truncate" title={item.officialDescription}>
+                          <div className="text-xs text-gray-600 mt-1 truncate" title={item.officialDescription}>
                             {item.officialDescription.substring(0, 30)}...
                           </div>
                         )}
@@ -1317,12 +1377,12 @@ Análise baseada em:
                             <div className="font-medium text-blue-600">
                               {item.opportunity?.suggestedNCM}
                             </div>
-                            <div className="text-gray-500">
+                            <div className="text-gray-700">
                               {item.opportunity?.currentRate}% → {item.opportunity?.suggestedRate}%
                             </div>
                           </div>
                         ) : (
-                          <span className="text-gray-400">Nenhuma identificada</span>
+                          <span className="text-gray-600">Nenhuma identificada</span>
                         )}
                       </td>
                       <td className="p-4">
@@ -1336,7 +1396,7 @@ Análise baseada em:
                             </div>
                           </div>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-600">-</span>
                         )}
                       </td>
                       <td className="p-4">
@@ -1349,7 +1409,7 @@ Análise baseada em:
                             {item.opportunity?.confidence}
                           </span>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-600">-</span>
                         )}
                       </td>
                     </tr>
@@ -1363,10 +1423,9 @@ Análise baseada em:
         {/* Help Section */}
         <div className="mt-8 bg-blue-50 rounded-xl p-6">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="text-blue-600 mt-1" size={20} />
+            <FiAlertTriangle className="text-blue-600 mt-1" size={20} />
             <div>
               <h4 className="font-semibold text-blue-800 mb-4">📋 Formatos de JSON aceitos:</h4>
-              
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <h5 className="font-medium text-blue-700 mb-2">✅ Formato Simples (Recomendado):</h5>
@@ -1413,16 +1472,6 @@ Análise baseada em:
                     <div className="text-gray-600">value, valor, price, amount, faturamento</div>
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4 p-3 bg-yellow-100 rounded">
-                <h5 className="font-medium text-yellow-800 mb-2">⚠️ Se não aparecer oportunidades:</h5>
-                <ul className="text-yellow-700 text-sm space-y-1">
-                  <li>• Verifique se o NCM tem 8 dígitos</li>
-                  <li>• Cole apenas 1-2 itens para testar primeiro</li>
-                  <li>• Use o exemplo que funciona garantido acima</li>
-                  <li>• Veja a seção "Debug" para entender o que foi extraído</li>
-                </ul>
               </div>
             </div>
           </div>

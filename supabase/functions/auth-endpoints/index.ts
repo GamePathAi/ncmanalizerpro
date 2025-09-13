@@ -2,8 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 interface UserState {
   id: string
@@ -17,15 +18,43 @@ interface UserState {
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const url = new URL(req.url)
     const path = url.pathname.split('/').pop()
+    const method = req.method
 
-    // Get auth header
+    if (method === 'POST') {
+      const body = await req.json()
+      console.log('Received POST body:', JSON.stringify(body));
+      console.log('Received method:', body?.method);
+
+      if (['register', 'login', 'verify-email'].includes(body.method)) {
+        console.log('Handling public endpoint:', body.method);
+        switch (body.method) {
+          case 'register':
+            return handleRegister(supabase, body)
+
+          case 'login':
+            return handleLogin(supabase, body)
+
+          case 'verify-email':
+            return handleVerifyEmail(supabase, body)
+
+          default:
+            return new Response(
+              JSON.stringify({ error: 'Invalid method' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+      }
+    }
+
+    console.log('Request not handled as public POST, proceeding to authorization check');
+
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
@@ -34,10 +63,9 @@ serve(async (req) => {
       )
     }
 
-    // Verify JWT token
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
+
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
@@ -45,39 +73,13 @@ serve(async (req) => {
       )
     }
 
-    // Handle different HTTP methods and paths
-    const method = req.method
-    
-    // For POST requests without auth (register, login, verify-email)
-    if (method === 'POST' && !authHeader) {
-      const body = await req.json()
-      
-      switch (body.method) {
-        case 'register':
-          return handleRegister(supabase, body)
-        
-        case 'login':
-          return handleLogin(supabase, body)
-        
-        case 'verify-email':
-          return handleVerifyEmail(supabase, body)
-        
-        default:
-          return new Response(
-            JSON.stringify({ error: 'Invalid method' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-      }
-    }
-    
-    // For authenticated endpoints
     switch (path) {
       case 'me':
         return handleGetUserState(supabase, user.id)
-      
+
       case 'resend-verification':
         return handleResendVerification(supabase, user)
-      
+
       default:
         return new Response(
           JSON.stringify({ error: 'Endpoint not found' }),
@@ -91,7 +93,7 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
-})
+});
 
 // POST /auth/register - Registra novo usuário
 async function handleRegister(supabase: any, body: any) {
@@ -105,36 +107,29 @@ async function handleRegister(supabase: any, body: any) {
       )
     }
     
-    // Criar usuário no Supabase Auth
-    const { data, error } = await supabase.auth.admin.createUser({
+    console.log('Attempting signUp with:', {email, password});
+    
+    // Criar usuário no Supabase Auth usando signUp
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      user_metadata: {
-        full_name: fullName || email
-      },
-      email_confirm: false // Requer confirmação de email
+      options: {
+        data: {
+          full_name: fullName || email
+        }
+      }
     })
     
     if (error) {
-      console.error('Error creating user:', error)
+      console.error('Error creating user:', error);
+      console.log('SignUp error details:', JSON.stringify(error, null, 2));
       return new Response(
         JSON.stringify({ error: error.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
-    // Enviar email de verificação
-    const { error: emailError } = await supabase.auth.admin.generateLink({
-      type: 'signup',
-      email: email,
-      options: {
-        redirectTo: `${Deno.env.get('SITE_URL')}/auth/callback`
-      }
-    })
-    
-    if (emailError) {
-      console.error('Error sending verification email:', emailError)
-    }
+    console.log('SignUp successful:', data);
     
     return new Response(
       JSON.stringify({

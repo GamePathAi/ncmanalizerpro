@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export type UserSubscriptionStatus = 'pending_email' | 'pending_subscription' | 'active';
 

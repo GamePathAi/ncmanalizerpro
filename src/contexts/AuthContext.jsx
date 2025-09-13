@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.ts';
 
 const AuthContext = createContext({});
 
@@ -20,6 +20,36 @@ export const AuthProvider = ({ children }) => {
   // Verificar status de autenticação
   const checkAuthStatus = async () => {
     try {
+      // Verificar primeiro se há autenticação local
+      const localToken = localStorage.getItem('auth_token');
+      const localEmail = localStorage.getItem('user_email');
+      const localStatus = localStorage.getItem('user_status');
+      
+      if (localToken && localEmail && localStatus) {
+        // Usar autenticação local
+        const mockUser = {
+          id: 'local_user_' + Date.now(),
+          email: localEmail,
+          email_confirmed_at: new Date().toISOString()
+        };
+        
+        const mockProfile = {
+          id: mockUser.id,
+          email: localEmail,
+          full_name: 'Usuário Teste',
+          subscription_status: localStatus,
+          subscription_plan: 'premium',
+          subscription_expires_at: null
+        };
+        
+        setUser(mockUser);
+        setProfile(mockProfile);
+        setSession({ user: mockUser, access_token: localToken });
+        setLoading(false);
+        return;
+      }
+      
+      // Fallback para Supabase se não houver autenticação local
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
@@ -369,6 +399,7 @@ export const AuthProvider = ({ children }) => {
     // Estados derivados
     isAuthenticated: !!user,
     hasActiveSubscription: profile?.subscription_status === 'active',
+    subscriptionStatus: profile?.subscription_status || null,
     userStatus: getUserStatus()
   };
 

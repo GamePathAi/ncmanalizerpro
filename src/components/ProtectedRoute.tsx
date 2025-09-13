@@ -7,6 +7,7 @@ interface ProtectedRouteProps {
   requireAuth?: boolean;
   requireEmailVerified?: boolean;
   requireActiveSubscription?: boolean;
+  allowedStatuses?: string[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -14,17 +15,26 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAuth = false,
   requireEmailVerified = false,
   requireActiveSubscription = false,
+  allowedStatuses = null,
 }) => {
-  const { user, loading, subscriptionStatus } = useAuth();
+  const { 
+    user, 
+    profile,
+    loading, 
+    userState, 
+    needsEmailVerification, 
+    needsSubscription, 
+    canAccessDashboard 
+  } = useAuth();
   const location = useLocation();
 
-  // Mostrar loading enquanto verifica autenticação
-  if (loading) {
+  // Mostrar loading apenas se realmente está carregando dados essenciais
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600">Verificando autenticação...</p>
         </div>
       </div>
     );
@@ -32,16 +42,39 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Verificar se requer autenticação
   if (requireAuth && !user) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Verificar se requer email verificado
-  if (requireEmailVerified && user && !user.email_confirmed_at) {
+  // Verificar allowedStatuses se especificado
+  if (allowedStatuses && user && profile) {
+    const userStatus = profile.subscription_status;
+    if (!allowedStatuses.includes(userStatus)) {
+      // Redirecionar baseado no status atual
+      switch (userStatus) {
+        case 'pending_email':
+          return <Navigate to="/verify-email" replace />;
+        case 'pending_subscription':
+          return <Navigate to="/pricing" replace />;
+        case 'active':
+          return <Navigate to="/dashboard" replace />;
+        default:
+          return <Navigate to="/login" replace />;
+      }
+    }
+  }
+
+  // Verificar se requer email verificado (fallback)
+  if (requireEmailVerified && user && needsEmailVerification) {
     return <Navigate to="/verify-email" replace />;
   }
 
-  // Verificar se requer assinatura ativa
-  if (requireActiveSubscription && user && subscriptionStatus !== 'active') {
+  // Verificar se requer assinatura ativa (fallback)
+  if (requireActiveSubscription && user && needsSubscription) {
+    return <Navigate to="/pricing" replace />;
+  }
+
+  // Para dashboard, verificar se pode acessar (fallback)
+  if (requireActiveSubscription && user && !canAccessDashboard) {
     return <Navigate to="/pricing" replace />;
   }
 
@@ -52,18 +85,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
+  // Mostrar loading apenas se realmente está carregando dados essenciais
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600">Verificando autenticação...</p>
         </div>
       </div>
     );
   }
 
-  // Se o usuário está logado, redirecionar para o dashboard
+  // Se o usuário está logado, redirecionar baseado no estado
   if (user) {
     return <Navigate to="/app" replace />;
   }
@@ -73,14 +107,21 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
 
 // Componente para redirecionamento baseado no estado do usuário
 export const StateBasedRedirect: React.FC = () => {
-  const { user, loading, subscriptionStatus } = useAuth();
+  const { 
+    user, 
+    loading, 
+    needsEmailVerification, 
+    needsSubscription, 
+    canAccessDashboard 
+  } = useAuth();
 
-  if (loading) {
+  // Mostrar loading apenas se realmente está carregando dados essenciais
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600">Verificando autenticação...</p>
         </div>
       </div>
     );
@@ -92,17 +133,22 @@ export const StateBasedRedirect: React.FC = () => {
   }
 
   // Se email não está verificado, ir para verificação
-  if (!user.email_confirmed_at) {
+  if (needsEmailVerification) {
     return <Navigate to="/verify-email" replace />;
   }
 
-  // Se não tem assinatura ativa, ir para pricing
-  if (subscriptionStatus !== 'active') {
+  // Se precisa de assinatura, ir para pricing
+  if (needsSubscription) {
     return <Navigate to="/pricing" replace />;
   }
 
-  // Se tudo está ok, ir para dashboard
-  return <Navigate to="/dashboard" replace />;
+  // Se pode acessar dashboard, ir para lá
+  if (canAccessDashboard) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Fallback: ir para pricing se não conseguir determinar o estado
+  return <Navigate to="/pricing" replace />;
 };
 
 // Hook para verificar permissões
